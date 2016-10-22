@@ -10,11 +10,11 @@
 #include "ARM_UART.h"
 #include "ARM_DELAY.h"
 #include "ARM_ADC.h"
-#include <stdlib.h> // mathematical functions
+#include <stdlib.h>
 
 
 /*
-
+	Cyclic Redundancy Check function used in CRC16_checksum().
 */
 uint16_t crc_xmodem_update(uint16_t crc, uint8_t data)
 {
@@ -30,7 +30,7 @@ uint16_t crc_xmodem_update(uint16_t crc, uint8_t data)
 
 
 /*
-
+	RTTY telemetry CRC calculation. String input. Calculation starts on the data after the initial '$' dollar sings.
 */
 uint16_t CRC16_checksum(uint8_t *string, uint32_t len, uint32_t start)
 {
@@ -48,11 +48,13 @@ uint16_t CRC16_checksum(uint8_t *string, uint32_t len, uint32_t start)
 
 
 /*
-
+	Function to convert an 8-bit number to ASCII characters. Output length depends on the size of the input number.
+	
+	8bit number		3 digits max
 */
 uint32_t ASCII_8bit_transmit(uint8_t number, uint8_t *buffer, uint32_t sequence)
 {
-	uint8_t ascii1 = 0; // 8bit numbers - 3 decimal places max
+	uint8_t ascii1 = 0;
 	uint8_t ascii2 = 0;
 	uint8_t ascii3 = 0;
 	uint16_t num1 = number;
@@ -71,11 +73,13 @@ uint32_t ASCII_8bit_transmit(uint8_t number, uint8_t *buffer, uint32_t sequence)
 
 
 /*
-
+	Function to convert an 8-bit number to ASCII characters. Output length fixed to minimum 2 characters.
+	
+	8bit number		3 digits max
 */
 uint32_t ASCII_8bit_2DEC_transmit(uint8_t number, uint8_t *buffer, uint32_t sequence)
 {
-	uint8_t ascii1 = 0; // 8bit numbers - 3 decimal places max
+	uint8_t ascii1 = 0;
 	uint8_t ascii2 = 0;
 	uint8_t ascii3 = 0;
 	uint16_t num1 = number;
@@ -94,11 +98,13 @@ uint32_t ASCII_8bit_2DEC_transmit(uint8_t number, uint8_t *buffer, uint32_t sequ
 
 
 /*
-
+	Function to convert a 16-bit number to ASCII characters. Output length depends on the size of the input number.
+	
+	16bit number		5 digits max
 */
 uint32_t ASCII_16bit_transmit(uint16_t number, uint8_t *buffer, uint32_t sequence)
 {
-	uint8_t ascii1 = 0; // 16bit numbers - 5 decimal places max
+	uint8_t ascii1 = 0;
 	uint8_t ascii2 = 0;
 	uint8_t ascii3 = 0;
 	uint8_t ascii4 = 0;
@@ -129,11 +135,13 @@ uint32_t ASCII_16bit_transmit(uint16_t number, uint8_t *buffer, uint32_t sequenc
 
 
 /*
-
+	Function to convert a 16-bit number to ASCII characters in HEX form. Output length fixed to four characters.
+	
+	16bit number		4 hexadecimal digits max
 */
 uint32_t ASCII_16bit_HEX_transmit(uint16_t number, uint8_t *buffer, uint32_t sequence)
 {
-	uint8_t ascii1 = 0; // 16bit numbers - 4 hexadecimal places max
+	uint8_t ascii1 = 0;
 	uint8_t ascii2 = 0;
 	uint8_t ascii3 = 0;
 	uint8_t ascii4 = 0;
@@ -162,11 +170,13 @@ uint32_t ASCII_16bit_HEX_transmit(uint16_t number, uint8_t *buffer, uint32_t seq
 
 
 /*
-
+	Function to convert a 32-bit number to ASCII characters. Output length depends on the size of the input number.
+	
+	32bit number		10 digits max
 */
 uint32_t ASCII_32bit_transmit(uint32_t number, uint8_t *buffer, uint32_t sequence)
 {
-	uint8_t ascii1 = 0; // 32bit numbers - 10 decimal places max
+	uint8_t ascii1 = 0;
 	uint8_t ascii2 = 0;
 	uint8_t ascii3 = 0;
 	uint8_t ascii4 = 0;
@@ -216,11 +226,17 @@ uint32_t ASCII_32bit_transmit(uint32_t number, uint8_t *buffer, uint32_t sequenc
 
 
 /*
-
+	Function to convert a 32-bit number to ASCII characters used specifically for the decimal part of longitude and latitude.
+	Output is fixed to 5 characters to ensure proper filling of '0' after the decimal point.
+	Input can be up to 7 digits with the output cutting off the last two digits.
+	
+	UBX			int32_t DEGREES (1e-7)
+	NMEA		4915.69566 01817.56412 (5 decimal places)
+	PUBX		4915.695661 01817.564128 (6 decimal places)
 */
-uint32_t ASCII_32bit_LATLON_transmit(uint32_t number, uint8_t *buffer, uint32_t sequence)
+uint32_t ASCII_32bit_LATLON_DECIMAL_transmit(uint32_t number, uint8_t *buffer, uint32_t sequence, uint8_t figures)
 {
-	uint8_t ascii1 = 0; // 32bit numbers - 10 decimal places max
+	uint8_t ascii1 = 0;
 	uint8_t ascii2 = 0;
 	uint8_t ascii3 = 0;
 	uint8_t ascii4 = 0;
@@ -254,104 +270,98 @@ uint32_t ASCII_32bit_LATLON_transmit(uint32_t number, uint8_t *buffer, uint32_t 
 	ascii8 += '0';
 	ascii9 += '0';
 	ascii10 += '0';
-	//buffer[sequence++] = ascii4; // for 7 decimal places accuracy
-	//buffer[sequence++] = ascii5; // for 7 decimal places accuracy
-	buffer[sequence++] = ascii6;
-	buffer[sequence++] = ascii7;
-	buffer[sequence++] = ascii8;
-	buffer[sequence++] = ascii9;
-	buffer[sequence++] = ascii10;
+	
+	if(figures == 5)
+	{
+		buffer[sequence++] = ascii6;
+		buffer[sequence++] = ascii7;
+		buffer[sequence++] = ascii8;
+		buffer[sequence++] = ascii9;
+		buffer[sequence++] = ascii10;
+	}
+	else if(figures == 6)
+	{
+		buffer[sequence++] = ascii5;
+		buffer[sequence++] = ascii6;
+		buffer[sequence++] = ascii7;
+		buffer[sequence++] = ascii8;
+		buffer[sequence++] = ascii9;
+		buffer[sequence++] = ascii10;
+	}
+	else if(figures == 7)
+	{
+		buffer[sequence++] = ascii4;
+		buffer[sequence++] = ascii5;
+		buffer[sequence++] = ascii6;
+		buffer[sequence++] = ascii7;
+		buffer[sequence++] = ascii8;
+		buffer[sequence++] = ascii9;
+		buffer[sequence++] = ascii10;
+	}
 	
 	return sequence;
 }
 
 
 /*
-
+	Converts GPS coordinates in Degrees and Decimal Minutes (4928.08702) to Decimal Degrees (49.4681170).
+	
+		PARAMETER		INPUT
+		lat_INT			4 digits max
+		lat_DEC			5 digits fixed
+		lon_INT			5 digits max
+		lon_DEC			5 digits fixed
+		latNS			1/0
+		lonEW			1/0
+	
+	The result is saved in global variables APRSLatitude and APRSLongitude.
 */
-void Coords_DEGtoDEC(uint32_t lat_INT, uint32_t lat_DEC, uint32_t lon_INT, uint32_t lon_DEC, uint8_t latNS, uint8_t lonEW, float lat, float lon)
+void Coords_DEGtoDEC(uint32_t lat_INT, uint32_t lat_DEC, uint32_t lon_INT, uint32_t lon_DEC, uint8_t latNS, uint8_t lonEW)
 {
-	// input lat_INT 4928 - degrees, minutes
-	// input lat_DEC 08702 - minutes decimal value
-	// input lon_INT 01805 - degrees, minutes
-	// input lon_DEC 46513 - minutes decimal value
-	// input latNS - 0/1 S/N
-	// input lonEW - 0/1 W/E
+	/*
+		lat_INT		4928	degrees, minutes
+		lat_DEC		08702	minutes decimal value
+		lon_INT		01805	degrees, minutes
+		lon_DEC		46513	minutes decimal value
+		latNS		0/1		S/N
+		lonEW		0/1		W/E
+	*/
 	
-	uint32_t deg = lat_INT / 100; // 49
-	uint32_t min = lat_INT % 100; // 28
-	min = (min * 100000) + lat_DEC; // 2808702
-	float minf = min / 100000.0; // 28.08702
-	minf = minf * 100 / 60; // 46.8117
-	min = minf * 100000.0; // 4681170
-	lat = (deg * 10000000) + min; // 494681170
+	float lat = 0.0;
+	float lon = 0.0;
 	
-	deg = lon_INT / 100; // 18
-	min = lon_INT % 100; // 05
-	min = (min * 100000) + lon_DEC; // 546513
-	minf = min / 100000.0; // 5.46513
-	minf = minf * 100 / 60; // 9.10855
-	min = minf * 100000.0; // 910855
-	lon = (deg * 10000000) + min; // 180910855
+	uint32_t deg = lat_INT / 100;								// 49
+	uint32_t min = lat_INT % 100;								// 28
+	min = (min * 100000) + lat_DEC;								// 2808702
+	float minf = min / 100000.0;								// 28.08702
+	minf = minf * 100 / 60;										// 46.8117
+	min = minf * 100000.0;										// 4681170
+	lat = (deg * 10000000) + min;								// 494681170
+	
+	deg = lon_INT / 100;										// 18
+	min = lon_INT % 100;										// 05
+	min = (min * 100000) + lon_DEC;								// 546513
+	minf = min / 100000.0;										// 5.46513
+	minf = minf * 100 / 60;										// 9.10855
+	min = minf * 100000.0;										// 910855
+	lon = (deg * 10000000) + min;								// 180910855
 	
 	
-	if(!latNS) lat = lat * -1;
-	if(!lonEW) lon = lon * -1;
+	if(!latNS) lat = lat * -1.0;
+	if(!lonEW) lon = lon * -1.0;
 	
-	lon_DEC = (labs(lon) % 10000000) / 100;
-	lon_INT = abs(lon / 10000000);
-	lat_DEC = (labs(lat) % 10000000) / 100;
-	lat_INT = abs(lat / 10000000);
+	lon_DEC = (labs(lon) % 10000000) / 100;						// just in case I wanted to save this format to a global variable as well
+	lon_INT = abs(lon / 10000000);								// just in case I wanted to save this format to a global variable as well
+	lat_DEC = (labs(lat) % 10000000) / 100;						// just in case I wanted to save this format to a global variable as well
+	lat_INT = abs(lat / 10000000);								// just in case I wanted to save this format to a global variable as well
 	
-	APRSLatitude = (float)lat / 10000000.0;
-	APRSLongitude = (float)lon / 10000000.0;
+	GPS_UBX_latitude_Float = (float)lat / 10000000.0;			// save to a global variable
+	GPS_UBX_longitude_Float = (float)lon / 10000000.0;			// save to a global variable
 }
 
 
 /*
-
-*/
-void UBLOX_powersave_mode_init(uint8_t * mode)
-{
-	// after setNMEAoff setting NMEA message's rate doesn't have an effect, GPGGAs must be polled manually
-	UBLOX_send_message(setNMEAoff, 28); // turn off the periodic output
-	SysTick_delay_ms(50);
-	UBLOX_send_message(enableGPSonly, 28); // turn off GLONASS (needs to be done for powersave mode)
-	SysTick_delay_ms(50);
-	UBLOX_send_message(mode, 52); // setup the desired UBX-CFG-PM2 (0x06 0x3B) settings
-	SysTick_delay_ms(50);
-	UBLOX_send_message(setPowerSaveMode, 10); // switch to powersave mode
-	SysTick_delay_ms(50);
-}
-
-
-#ifdef UBX
-
-
-/*
-
-*/
-void UBLOX_fill_buffer_UBX(uint8_t *buffer, uint8_t len) // the delay for reception reacts to module's response
-{
-	uint32_t timeout = 16000000;
-	uint32_t pos = UART1_buffer_pointer;
-
-	while(UART1_buffer_pointer < (pos + len) && timeout) timeout--;
-	for(uint8_t i = 0; i < GPSBUFFER_SIZE; i++)
-	{
-		buffer[i] = 0;
-	}
-	
-	uint8_t bytes = UART1_buffer_pointer;
-	for(uint8_t i = 0; i < bytes; i++)
-	{
-		buffer[i] = UART1_RX_buffer[i];
-	}
-}
-
-
-/*
-
+	Verifies the checksum of received UBX messages.
 */
 uint8_t UBLOX_verify_checksum(volatile uint8_t *buffer, uint8_t len)
 {
@@ -375,39 +385,135 @@ uint8_t UBLOX_verify_checksum(volatile uint8_t *buffer, uint8_t len)
 
 
 /*
-
+	Waits for the UART1_RX_buffer[] to be filled with an expected number of bytes
+	and then empties the buffer to a desired buffer for further processing.
 */
-void UBLOX_parse_0102(volatile uint8_t *buffer) // UBX 01 02 - HEX - POSITION
+void UBLOX_fill_buffer_UBX(uint8_t *buffer, uint8_t len)
 {
-	GPSerror |= (1 << 2);
-	if(buffer[0] == 0xB5 && buffer[1] == 0x62 && buffer[2] == 0x01 && buffer[3] == 0x02)
+	uint32_t timeout = 16000000;
+	uint32_t pos = UART1_buffer_pointer;
+
+	while(UART1_buffer_pointer < (pos + len) && timeout) timeout--;
+	for(uint8_t i = 0; i < GPSBUFFER_SIZE; i++)
 	{
-		if(UBLOX_verify_checksum(buffer, 36))
-		{
-			GPSlon = (int32_t)buffer[10] | (int32_t)buffer[11] << 8 | (int32_t)buffer[12] << 16 | (int32_t)buffer[13] << 24;
-			GPSlon_dec = (labs(GPSlon) % 10000000) / 100;
-			GPSlon_int = abs(GPSlon / 10000000);
-			GPSlat = (int32_t)buffer[14] | (int32_t)buffer[15] << 8 | (int32_t)buffer[16] << 16 | (int32_t)buffer[17] << 24;
-			GPSlat_dec = (labs(GPSlat) % 10000000) / 100;
-			GPSlat_int = abs(GPSlat / 10000000);
-			GPSalt = (int32_t)buffer[22] | (int32_t)buffer[23] << 8 | (int32_t)buffer[24] << 16 | (int32_t)buffer[25] << 24;
-			GPSalt /= 1000;
-			GPSerror &= ~(1 << 2);
-			}else{
-			GPSchecksError++;
-		}
-	}else{
-		GPSbufferError++;
+		buffer[i] = 0;
+	}
+	
+	uint8_t bytes = UART1_buffer_pointer;
+	for(uint8_t i = 0; i < bytes; i++)
+	{
+		buffer[i] = UART1_RX_buffer[i];
 	}
 }
 
 
 /*
-
+	Waits for the UART1_RX_buffer[] to contain an NMEA message terminated by the '\n' character
+	and then empties the buffer to a desired buffer for further processing.
 */
-void UBLOX_parse_0121(volatile uint8_t *buffer) // UBX 01 21 - HEX - TIME
+void UBLOX_fill_buffer_NMEA(uint8_t *buffer)
 {
-	GPSerror |= (1 << 3);
+	uint32_t timeout = 16000000;
+
+	while(UART1_RX_buffer[UART1_buffer_pointer - 1] != '\n' && timeout) timeout--;
+	for(uint8_t i = 0; i < GPSBUFFER_SIZE; i++)
+	{
+		buffer[i] = 0;
+	}
+	
+	if(!timeout) GPS_UBX_error_bitfield |= (1 << 0);
+	
+	uint8_t bytes = UART1_buffer_pointer;
+	for(uint8_t i = 0; i < bytes; i++)
+	{
+		buffer[i] = UART1_RX_buffer[i];
+	}
+}
+
+
+/*
+	Transmits a desired UBX message across UART1.
+*/
+void UBLOX_send_message(uint8_t *message, uint8_t len)
+{
+	for(uint8_t i = 0; i < len; i++)
+	{
+		UART1_TX(message[i]);
+	}
+	UART1_buffer_pointer = 0;
+}
+
+
+/*
+	Function polling desired GPS data. It first sends the set UBX request.
+	Then waits for the data and calls the appropriate parsing function.
+*/
+void UBLOX_request_UBX(uint8_t *request, uint8_t len, uint8_t expectlen, void (*parse)(volatile uint8_t*))
+{
+	for(uint8_t i = 0; i < len; i++)							// send the request
+	{
+		UART1_TX(*request++);
+	}
+	
+	UART1_buffer_pointer = 0;									// reset UART1 RX buffer pointer
+	
+	UBLOX_fill_buffer_UBX(GPSbuffer, expectlen);				// copy the response from UART1_RX_buffer to GPSbuffer
+	
+	parse(GPSbuffer);											// parse the response to appropriate variables
+}
+
+
+/*
+	UBX 01 02	POSITION
+	
+		GPS_UBX_longitude				494681170		+/-
+		GPS_UBX_latitude				180910855		+/-
+		GPS_UBX_longitude_Float			49.4681170		+/-
+		GPS_UBX_latitude_Float			18.0910855		+/-
+		GPSaltitude						403				+/-
+		
+	Checks the header and the checksum.
+*/
+void UBLOX_parse_0102(volatile uint8_t *buffer)
+{
+	GPS_UBX_error_bitfield |= (1 << 2);
+	
+	if(buffer[0] == 0xB5 && buffer[1] == 0x62 && buffer[2] == 0x01 && buffer[3] == 0x02)
+	{
+		if(UBLOX_verify_checksum(buffer, 36))
+		{
+			GPS_UBX_longitude = (int32_t)buffer[10] | (int32_t)buffer[11] << 8 | (int32_t)buffer[12] << 16 | (int32_t)buffer[13] << 24;
+			GPS_UBX_longitude_Float = (float)GPS_UBX_longitude / 10000000.0;
+			
+			GPS_UBX_latitude = (int32_t)buffer[14] | (int32_t)buffer[15] << 8 | (int32_t)buffer[16] << 16 | (int32_t)buffer[17] << 24;
+			GPS_UBX_latitude_Float = (float)GPS_UBX_latitude / 10000000.0;
+			
+			GPSaltitude = (int32_t)buffer[22] | (int32_t)buffer[23] << 8 | (int32_t)buffer[24] << 16 | (int32_t)buffer[25] << 24;
+			GPSaltitude /= 1000;
+			
+			GPS_UBX_error_bitfield &= ~(1 << 2);
+		}else{
+			GPS_UBX_checksum_error++;
+		}
+	}else{
+		GPS_UBX_buffer_error++;
+	}
+}
+
+
+/*
+	UBX 01 21	TIME
+		
+		GPShour				9
+		GPSminute			14
+		GPSsecond			55
+		
+	Checks the header and the checksum.
+*/
+void UBLOX_parse_0121(volatile uint8_t *buffer)
+{
+	GPS_UBX_error_bitfield |= (1 << 3);
+	
 	if(buffer[0] == 0xB5 && buffer[1] == 0x62 && buffer[2] == 0x01 && buffer[3] == 0x21)
 	{
 		if(UBLOX_verify_checksum(buffer, 28))
@@ -415,36 +521,51 @@ void UBLOX_parse_0121(volatile uint8_t *buffer) // UBX 01 21 - HEX - TIME
 			GPShour = buffer[22];
 			GPSminute = buffer[23];
 			GPSsecond = buffer[24];
-			GPSerror &= ~(1 << 3);
-			}else{
-			GPSchecksError++;
-		}
+			
+			GPS_UBX_error_bitfield &= ~(1 << 3);
 		}else{
-		GPSbufferError++;
+			GPS_UBX_checksum_error++;
+		}
+	}else{
+		GPS_UBX_buffer_error++;
 	}
 }
 
 
 /*
-
+	UBX 01 06	SATS & FIX
+		
+		GPSsats				7
+		GPSfix				0x00		No Fix
+							0x01		Dead Reckoning only
+							0x02		2D-Fix
+							0x03		3D-Fix
+							0x04		GPS + Dead Reckoning combined
+							0x05		Time only fix
+		
+	Checks the header and the checksum.
 */
-void UBLOX_parse_0106(volatile uint8_t *buffer) // UBX 01 06 - HEX - SATS & FIX
+void UBLOX_parse_0106(volatile uint8_t *buffer)
 {
-	GPSerror |= (1 << 1);
+	GPS_UBX_error_bitfield |= (1 << 1);
+	
 	if(buffer[0] == 0xB5 && buffer[1] == 0x62 && buffer[2] == 0x01 && buffer[3] == 0x06)
 	{
 		if(UBLOX_verify_checksum(buffer, 60))
 		{
 			GPSfix = buffer[16];
 			GPSsats = buffer[53];
-			GPSerror &= ~(1 << 1);
-			}else{
-			GPSchecksError++;
+			
+			GPS_UBX_error_bitfield &= ~(1 << 1);
+		}else{
+			GPS_UBX_checksum_error++;
+			
 			GPSfix = 0;
 			GPSsats = 0;
 		}
-		}else{
-		GPSbufferError++;
+	}else{
+		GPS_UBX_buffer_error++;
+		
 		GPSfix = 0;
 		GPSsats = 0;
 	}
@@ -452,60 +573,112 @@ void UBLOX_parse_0106(volatile uint8_t *buffer) // UBX 01 06 - HEX - SATS & FIX
 
 
 /*
-
+	UBX 06 24	NAVIGATION MODE
+	
+		GPSnavigation		0	portable
+							2	stationary
+							3	pedestrian
+							4	automotive
+							5	sea
+							6	airborne with <1g acceleration
+							7	airborne with <2g acceleration
+							8	airborne with <4g acceleration
+							9	wrist worn watch
+	
+	Checks the header and the checksum.
 */
-void UBLOX_parse_0624(volatile uint8_t *buffer) // UBX 06 24 - HEX - NAVIGATION MODE
+void UBLOX_parse_0624(volatile uint8_t *buffer)
 {
-	GPSerror |= (1 << 0);
+	GPS_UBX_error_bitfield |= (1 << 0);
+	
 	if(buffer[0] == 0xB5 && buffer[1] == 0x62 && buffer[2] == 0x06 && buffer[3] == 0x24)
 	{
 		if(UBLOX_verify_checksum(buffer, 44))
 		{
 			GPSnavigation = buffer[8];
-			GPSerror &= ~(1 << 0);
+			
+			GPS_UBX_error_bitfield &= ~(1 << 0);
 		}else{
-			GPSchecksError++;
+			GPS_UBX_checksum_error++;
+			
 			GPSnavigation = 0;
 		}
 	}else{
-		GPSbufferError++;
+		GPS_UBX_buffer_error++;
+		
 		GPSnavigation = 0;
 	}
 }
 
 
 /*
-
+	UBX 06 11	POWER SAVE MODE
+		
+		GPSpowermode		0	Continuous Mode
+							1	Power Save Mode
+							4	Continuous Mode
+	
+	Checks the header and the checksum.
 */
-void UBLOX_parse_0611(volatile uint8_t *buffer) // UBX 06 11 - HEX - POWER SAVE MODE
+void UBLOX_parse_0611(volatile uint8_t *buffer)
 {
-	GPSerror |= (1 << 4);
+	GPS_UBX_error_bitfield |= (1 << 4);
+	
 	if(buffer[0] == 0xB5 && buffer[1] == 0x62 && buffer[2] == 0x06 && buffer[3] == 0x11)
 	{
 		if(UBLOX_verify_checksum(buffer, 10))
 		{
 			GPSpowermode = buffer[7];
-			GPSerror &= ~(1 << 4);
+			
+			GPS_UBX_error_bitfield &= ~(1 << 4);
 		}else{
-			GPSchecksError++;
+			GPS_UBX_checksum_error++;
+			
 			GPSpowermode = 0;
 		}
-		}else{
-		GPSbufferError++;
+	}else{
+		GPS_UBX_buffer_error++;
+		
 		GPSpowermode = 0;
 	}
 }
 
 
 /*
-
+	UBX 01 07	EVERYTHING
+	
+		GPSyear						2016
+		GPSmonth					10
+		GPSday						18
+		GPShour						9
+		GPSminute					14
+		GPSsecond					55
+		GPSfix						3
+		GPSpowersavemodestate		0	PSM is not active
+									1	Enabled (an intermediate state before Acquisition state)
+									2	Acquisition
+									3	Tracking
+									4	Power Optimized Tracking
+									5	Inactive
+		GPSsats						7
+		GPS_UBX_latitude			494681170		+/-
+		GPS_UBX_longitude			180910855		+/-
+		GPS_UBX_longitude_Float		49.4681170		+/-
+		GPS_UBX_latitude_Float		18.0910855		+/-
+		GPSaltitude					403				+/-
+		GPSgroundspeed				10000			+/-
+		GPSheading					2545641			+/-
+	
+	Checks the header and the checksum.
+	UBLOX 7 message is shorter then UBLOX 8 message. It must be reflected in the checksum verification.
 */
-void UBLOX_parse_0107(volatile uint8_t *buffer) // UBX 01 07 - HEX - EVERYTHING
+void UBLOX_parse_0107(volatile uint8_t *buffer)
 {
-	GPSerror |= (1 << 2);
+	GPS_UBX_error_bitfield |= (1 << 2);
+	
 	if(buffer[0] == 0xB5 && buffer[1] == 0x62 && buffer[2] == 0x01 && buffer[3] == 0x07)
 	{
-		if(UBLOX_verify_checksum(buffer, 92) || UBLOX_verify_checksum(buffer, 100)) // UBLOX 7 message is shorter then UBLOX 8 message
+		if(UBLOX_verify_checksum(buffer, 92) || UBLOX_verify_checksum(buffer, 100))
 		{
 			// YEAR, MONTH, DAY
 			GPSyear = (uint16_t)buffer[10] | (uint16_t)buffer[11] << 8;
@@ -527,31 +700,39 @@ void UBLOX_parse_0107(volatile uint8_t *buffer) // UBX 01 07 - HEX - EVERYTHING
 			GPSsats = buffer[29];
 			
 			// LONGITUDE, LATITUDE, ALTITUDE ABOVE MEAN SEA LEVEL
-			GPSlon = (int32_t)buffer[30] | (int32_t)buffer[31] << 8 | (int32_t)buffer[32] << 16 | (int32_t)buffer[33] << 24;
-			GPSlon_dec = (labs(GPSlon) % 10000000) / 100;
-			GPSlon_int = abs(GPSlon / 10000000);
+			GPS_UBX_longitude = (int32_t)buffer[30] | (int32_t)buffer[31] << 8 | (int32_t)buffer[32] << 16 | (int32_t)buffer[33] << 24;
+			GPS_UBX_longitude_Float = (float)GPS_UBX_longitude / 10000000.0;
 			
-			GPSlat = (int32_t)buffer[34] | (int32_t)buffer[35] << 8 | (int32_t)buffer[36] << 16 | (int32_t)buffer[37] << 24;
-			GPSlat_dec = (labs(GPSlat) % 10000000) / 100;
-			GPSlat_int = abs(GPSlat / 10000000);
+			GPS_UBX_latitude = (int32_t)buffer[34] | (int32_t)buffer[35] << 8 | (int32_t)buffer[36] << 16 | (int32_t)buffer[37] << 24;
+			GPS_UBX_latitude_Float = (float)GPS_UBX_latitude / 10000000.0;
 			
-			GPSalt = (int32_t)buffer[42] | (int32_t)buffer[43] << 8 | (int32_t)buffer[44] << 16 | (int32_t)buffer[45] << 24;
-			GPSalt /= 1000;
+			GPSaltitude = (int32_t)buffer[42] | (int32_t)buffer[43] << 8 | (int32_t)buffer[44] << 16 | (int32_t)buffer[45] << 24;
+			GPSaltitude /= 1000;
 			
 			// GROUND SPEED, HEADING
 			GPSgroundspeed = (int32_t)buffer[66] | (int32_t)buffer[67] << 8 | (int32_t)buffer[68] << 16 | (int32_t)buffer[69] << 24;
 			GPSheading = (int32_t)buffer[70] | (int32_t)buffer[71] << 8 | (int32_t)buffer[72] << 16 | (int32_t)buffer[73] << 24;;
 			
-			GPSerror &= ~(1 << 2);
+			GPS_UBX_error_bitfield &= ~(1 << 2);
 		}else{
-			GPSchecksError++;
+			GPS_UBX_checksum_error++;
+			
+			GPSfix = 0;
+			GPSsats = 0;
 		}
+	}else{
+		GPS_UBX_buffer_error++;
+		
+		GPSfix = 0;
+		GPSsats = 0;
 	}
 }
 
 
 /*
-
+	UBX 05 01	ACK
+	
+	Checks the header and the checksum.
 */
 void UBLOX_parse_ACK(volatile uint8_t *buffer)
 {
@@ -559,225 +740,72 @@ void UBLOX_parse_ACK(volatile uint8_t *buffer)
 	{
 		if(buffer[3] != 0x01)
 		{
-			GPSackError++;
+			GPS_UBX_ack_error++;
 		}
-		}else{
-		GPSbufferError++;
-	}
-}
-
-
-/*
-
-*/
-void UBLOX_parse_empty()
-{
-	// dummy function
-}
-
-
-/*
-
-*/
-void UBLOX_request_UBX(uint8_t *request, uint8_t len, uint8_t expectlen, void (*parse)(volatile uint8_t*)) // request with a dynamic delay
-{
-	for(uint8_t i = 0; i < len; i++) // send the request
-	{
-		UART1_TX(*request++);
-	}
-	UART1_buffer_pointer = 0; // reset UART1 RX buffer pointer
-	UBLOX_fill_buffer_UBX(GPSbuffer, expectlen); // copy the response from UART1_RX_buffer to GPSbuffer
-	parse(GPSbuffer); // parse the response to variables
-}
-
-
-/*
-
-*/
-uint32_t TX_BUFFER_fill_UBX(uint8_t *buffer, uint32_t sequence)
-{
-	buffer[0] = '$';
-	buffer[1] = '$';
-	buffer[2] = '$';
-	buffer[3] = '$';
-	buffer[4] = 'T';
-	buffer[5] = 'T';
-	buffer[6] = '7';
-	buffer[7] = 'F';
-	buffer[8] = ',';
-	sequence = 9;
-	
-	sequence = ASCII_32bit_transmit(telemCount, buffer, sequence);
-	buffer[sequence++] = ',';
-	sequence = ASCII_8bit_2DEC_transmit(GPShour, buffer, sequence);
-	buffer[sequence++] = ':';
-	sequence = ASCII_8bit_2DEC_transmit(GPSminute, buffer, sequence);
-	buffer[sequence++] = ':';
-	sequence = ASCII_8bit_2DEC_transmit(GPSsecond, buffer, sequence);
-	buffer[sequence++] = ',';
-	
-	sequence = ASCII_16bit_transmit(GPSyear, buffer, sequence);
-	sequence = ASCII_8bit_2DEC_transmit(GPSmonth, buffer, sequence);
-	sequence = ASCII_8bit_2DEC_transmit(GPSday, buffer, sequence);
-	buffer[sequence++] = ',';
-	
-	if(GPSfix > 0)	// if the fix is not valid, retransmit last valid position data
-	{
-		if(GPSlat < 0) buffer[sequence++] = '-';
-		sequence = ASCII_16bit_transmit((uint16_t)GPSlat_int, buffer, sequence);
-		buffer[sequence++] = '.';
-		sequence = ASCII_32bit_LATLON_transmit((uint32_t)GPSlat_dec, buffer, sequence);	// must fill '0's after decimal point
-		buffer[sequence++] = ',';
-		
-		if(GPSlon < 0) buffer[sequence++] = '-';
-		sequence = ASCII_16bit_transmit((uint16_t)GPSlon_int, buffer, sequence);
-		buffer[sequence++] = '.';
-		sequence = ASCII_32bit_LATLON_transmit((uint32_t)GPSlon_dec, buffer, sequence);	// must fill '0's after decimal point
-		buffer[sequence++] = ',';
-		
-		if(GPSalt < 0) buffer[sequence++] = '-';
-		uint32_t alt = (uint32_t)abs(GPSalt);
-		sequence = ASCII_32bit_transmit(alt, buffer, sequence);
-		buffer[sequence++] = ',';
-		
-		GPSlat_L = GPSlat;
-		GPSlat_int_L = GPSlat_int;
-		GPSlat_dec_L = GPSlat_dec;
-		GPSlon_L = GPSlon;
-		GPSlon_int_L = GPSlon_int;
-		GPSlon_dec_L = GPSlon_dec;
-		GPSalt_L = GPSalt;
 	}else{
-		if(GPSlat_L < 0) buffer[sequence++] = '-';
-		sequence = ASCII_16bit_transmit((uint16_t)GPSlat_int_L, buffer, sequence);
-		buffer[sequence++] = '.';
-		sequence = ASCII_32bit_LATLON_transmit((uint32_t)GPSlat_dec_L, buffer, sequence);	// must fill '0's after decimal point
-		buffer[sequence++] = ',';
-		
-		if(GPSlon_L < 0) buffer[sequence++] = '-';
-		sequence = ASCII_16bit_transmit((uint16_t)GPSlon_int_L, buffer, sequence);
-		buffer[sequence++] = '.';
-		sequence = ASCII_32bit_LATLON_transmit((uint32_t)GPSlon_dec_L, buffer, sequence);	// must fill '0's after decimal point
-		buffer[sequence++] = ',';
-		
-		if(GPSalt_L < 0) buffer[sequence++] = '-';
-		uint32_t alt_L = (uint32_t)abs(GPSalt_L);		// needs to be turned from INT32_T to UINT32_T for proper processing of negative altitudes
-		sequence = ASCII_32bit_transmit(alt_L, buffer, sequence);
-		buffer[sequence++] = ',';
+		GPS_UBX_buffer_error++;
 	}
-	
-	sequence = ASCII_8bit_transmit(GPSsats, buffer, sequence);
-	buffer[sequence++] = ',';
-	buffer[sequence++] = GPSfix + '0';
-	buffer[sequence++] = ',';
-	//buffer[sequence++] = GPSpowersavemodestate + '0';
-	//buffer[sequence++] = ',';
-	
-	uint32_t AD3 = ((uint32_t)AD3data * 3300) / 4096;							// convert ADC reading to mV
-	uint32_t AD9 = ((uint32_t)AD9data * 6600) / 4096;							// convert ADC reading to mV
-	float temperatureF = (float)AD15data * 0.30402 - 274.896 + TEMP_OFFSET;		// convert ADC reading to °C
-	sequence = ASCII_16bit_transmit((uint16_t)AD3, buffer, sequence);
-	buffer[sequence++] = ',';
-	sequence = ASCII_16bit_transmit((uint16_t)AD9, buffer, sequence);
-	buffer[sequence++] = ',';
-	if(temperatureF < 0) buffer[sequence++] = '-';
-	sequence = ASCII_16bit_transmit((uint8_t)abs(temperatureF), buffer, sequence);
-	buffer[sequence++] = ',';
-	
-	if(GPSnavigation != 6) GPSerror |= (1 << 6);
-	if(GPSerror == 0b01111111) GPSerror = 0b01011111;	// character 'DEL' doesn't show in DL-FLDIGI, needs to be changed -> '_'
-	if(GPSerror == 0b00101100) GPSerror = 0b01001100;	// character corresponds to ',' which is used in the parser -> 'L'
-	if(GPSerror == 0b00101010) GPSerror = 0b01001010;	// character corresponds to '*' which is used in the parser -> 'J'
-	if(GPSerror == 0b00100100) GPSerror = 0b01000100;	// character corresponds to '$' which is used in the parser -> 'D'
-	buffer[sequence++] = GPSerror;
-	
-	GPSchecksum = CRC16_checksum(buffer, sequence, 4);
-	buffer[sequence++] = '*';
-	sequence = ASCII_16bit_HEX_transmit(GPSchecksum, buffer, sequence);
-	
-	//buffer[sequence++] = 0x0D;						// CR '\r' - not advised by UKHAS
-	buffer[sequence++] = 0x0A;							// LF '\n'
-	
-	GPSerror = 0b00100000;
-	GPSnavigation = 0;
-	telemetry_len = sequence;
-	
-	return sequence;
 }
 
 
-#endif // UBX
-
-
-#ifdef NMEA
-
-
 /*
-
+	Dummy parse function.
 */
-void UBLOX_fill_buffer_NMEA(uint8_t *buffer)
+void UBLOX_parse_empty(void)
 {
-	uint32_t timeout = 16000000;
-
-	while(UART1_RX_buffer[UART1_buffer_pointer - 1] != '\n' && timeout) timeout--;
-	for(uint8_t i = 0; i < GPSBUFFER_SIZE; i++)
-	{
-		buffer[i] = 0;
-	}
 	
-	if(!timeout) GPSerror |= (1 << 0);
-	
-	uint8_t bytes = UART1_buffer_pointer;
-	for(uint8_t i = 0; i < bytes; i++)
-	{
-		buffer[i] = UART1_RX_buffer[i];
-	}
 }
 
 
 /*
-
-*/
-void UBLOX_send_message(uint8_t *message, uint8_t len)
-{
-	for(uint8_t i = 0; i < len; i++)
-	{
-		UART1_TX(message[i]);
-	}
-	UART1_buffer_pointer = 0;
-}
-
-
-/*
-
+	Processes and parses an NMEA GGA message located in the input buffer.
+	Accepts both GPGGA and GNGGA messages.
+		
+		GPShour						15
+		GPSminute					30
+		GPSsecond					43
+		GPS_NMEA_latitude_int		4928
+		GPS_NMEA_latitude_dec		00456
+		GPS_NMEA_longitude_int		01815
+		GPS_NMEA_longitude_dec		58561
+		GPS_NMEA_NS					1/0
+		GPS_NMEA_EW					1/0
+		GPSfix						3
+		GPSsats						11
+		GPSaltitude					403
+		
+		GPS_NMEA_checksum_toverify
+		GPS_NMEA_checksum_calculated
+		
+	Checks the header, saves the checksum and calculates a control checksum.
 */
 void UBLOX_process_GGA(uint8_t *buffer)
 {
 	if(buffer[1] == 'G' && (buffer[2] == 'N' || buffer[2] == 'P') && buffer[3] == 'G' && buffer[4] == 'G' && buffer[5] == 'A')
 	{
 		uint8_t i, j, IntegerPart;
+		uint8_t GPSaltitudeNeg = 0;
 		
 		GPShour = 0;
 		GPSminute = 0;
 		GPSsecond = 0;
-		GPSlat_int = 0;
-		GPSlat_dec = 0;
-		GPSlon_int = 0;
-		GPSlon_dec = 0;
-		GPSlatNS = 1;
-		GPSlonEW = 1;
+		GPS_NMEA_latitude_int = 0;
+		GPS_NMEA_latitude_dec = 0;
+		GPS_NMEA_longitude_int = 0;
+		GPS_NMEA_longitude_dec = 0;
+		GPS_NMEA_NS = 1;
+		GPS_NMEA_EW = 1;
 		GPSfix = 0;
 		GPSsats = 0;
-		GPSaltNeg = 0;
-		GPSalt = 0;
-		GPSchecksum = 0;
-		GPSchecksum_verify = 0;
+		GPSaltitude = 0;
+		GPS_NMEA_checksum_calculated = 0;
+		GPS_NMEA_checksum_toverify = 0;
 		IntegerPart = 1;
 		
 		i = 1;
 		while(buffer[i] != '*')
 		{
-			GPSchecksum ^= buffer[i];
+			GPS_NMEA_checksum_calculated ^= buffer[i];
 			i++;
 		}
 		
@@ -790,163 +818,7 @@ void UBLOX_process_GGA(uint8_t *buffer)
 			}else{
 				switch(j)
 				{
-					case 1: // time
-					if((buffer[i] >= '0') && (buffer[i] <= '9'))
-					{
-						if(i == 7 || i == 8)
-						{
-							GPShour = GPShour * 10;
-							GPShour += (buffer[i] - '0');
-						}
-						if(i == 9 || i == 10)
-						{
-							GPSminute = GPSminute * 10;
-							GPSminute += (buffer[i] - '0');
-						}
-						if(i == 11 || i == 12)
-						{
-							GPSsecond = GPSsecond * 10;
-							GPSsecond += (buffer[i] - '0');
-						}
-					}
-					break;
-					
-					case 2: // latitude
-					if((buffer[i] >= '0') && (buffer[i] <= '9') && IntegerPart)
-					{
-						GPSlat_int = GPSlat_int * 10;
-						GPSlat_int += (int16_t)(buffer[i] - '0');
-					}
-					if(buffer[i] == '.') IntegerPart = 0;
-					if((buffer[i] >= '0') && (buffer[i] <= '9') && !IntegerPart)
-					{
-						GPSlat_dec = GPSlat_dec * 10;
-						GPSlat_dec += (int32_t)(buffer[i] - '0');
-					}
-					break;
-					
-					case 3: // N/S
-					if(buffer[i] == 'N')
-					{
-						GPSlatNS = 1;
-					}
-					else if(buffer[i] == 'S')
-					{
-						GPSlatNS = 0;
-					}
-					break;
-					
-					case 4: // longitude
-					if((buffer[i] >= '0') && (buffer[i] <= '9') && IntegerPart)
-					{
-						GPSlon_int = GPSlon_int * 10;
-						GPSlon_int += (int16_t)(buffer[i] - '0');
-					}
-					if(buffer[i] == '.') IntegerPart = 0;
-					if((buffer[i] >= '0') && (buffer[i] <= '9') && !IntegerPart)
-					{
-						GPSlon_dec = GPSlon_dec * 10;
-						GPSlon_dec += (int32_t)(buffer[i] - '0');
-					}
-					break;
-					
-					case 5: // E/W
-					if(buffer[i] == 'E')
-					{
-						GPSlonEW = 1;
-					}
-					else if(buffer[i] == 'W')
-					{
-						GPSlonEW = 0;
-					}
-					break;
-					
-					case 6: // fix
-					GPSfix = buffer[i] - '0';
-					break;
-					
-					case 7: // satellites
-					if((buffer[i] >= '0') && (buffer[i] <= '9'))
-					{
-						GPSsats = GPSsats * 10;
-						GPSsats += (uint8_t)(buffer[i] - '0');
-					}
-					break;
-					
-					case 9: // altitude
-					if(buffer[i] == '-') GPSaltNeg = 1;
-					if((buffer[i] >= '0') && (buffer[i] <= '9') && IntegerPart)
-					{
-						GPSalt = GPSalt * 10;
-						GPSalt += (int32_t)(buffer[i] - '0');
-					}
-					if(buffer[i] == '.') IntegerPart = 0;
-					break;
-					
-					case 14: // checksum (XOR of $-* bytes)
-					if(IntegerPart == 3)
-					{
-						if((buffer[i] >= '0') && (buffer[i] <= '9')) GPSchecksum_verify += (buffer[i] - '0');
-						else if((buffer[i] >= 'A') && (buffer[i] <= 'F')) GPSchecksum_verify += (buffer[i] - '7');
-						IntegerPart++;
-					}
-					if(IntegerPart == 2)
-					{
-						if((buffer[i] >= '0') && (buffer[i] <= '9')) GPSchecksum_verify = ((buffer[i] - '0') << 4);
-						else if((buffer[i] >= 'A') && (buffer[i] <= 'F')) GPSchecksum_verify = ((buffer[i] - '7') << 4);
-						IntegerPart++;
-					}
-					if(buffer[i] == '*') IntegerPart = 2;
-					break;
-					
-					default:
-					break;
-				}
-			}
-		}
-	}else{
-		GPSerror |= (1 << 1);
-	}
-}
-
-
-/*
-
-*/
-void UBLOX_process_ZDA(uint8_t *buffer)
-{
-	if(buffer[1] == 'G' && (buffer[2] == 'N' || buffer[2] == 'P') && buffer[3] == 'Z' && buffer[4] == 'D' && buffer[5] == 'A')
-	{
-		uint8_t i, j, IntegerPart;
-		
-		GPShour = 0;
-		GPSminute = 0;
-		GPSsecond = 0;
-		GPSday = 0;
-		GPSmonth = 0;
-		GPSyear = 0;
-		GPSchecksum = 0;
-		GPSchecksum_verify = 0;
-		IntegerPart = 1;
-		
-		i = 1;
-		while(buffer[i] != '*')
-		{
-			GPSchecksum ^= buffer[i];
-			i++;
-		}
-		
-		for(i = 6, j = 0; i < GPSBUFFER_SIZE && (j < 7); i++)
-		{
-			if(buffer[i] == ',')
-			{
-				j++;
-				IntegerPart = 1;
-			}else{
-				switch(j)
-				{
-					case 1: // time
-					
+					case 1:																// TIME
 						if((buffer[i] >= '0') && (buffer[i] <= '9'))
 						{
 							if(i == 7 || i == 8)
@@ -967,45 +839,215 @@ void UBLOX_process_ZDA(uint8_t *buffer)
 						}
 						break;
 					
-					case 2: // Day
+					case 2:																// LATITUDE
+						if((buffer[i] >= '0') && (buffer[i] <= '9') && IntegerPart)
+						{
+							GPS_NMEA_latitude_int = GPS_NMEA_latitude_int * 10;
+							GPS_NMEA_latitude_int += (uint16_t)(buffer[i] - '0');
+						}
+						if(buffer[i] == '.') IntegerPart = 0;
+						if((buffer[i] >= '0') && (buffer[i] <= '9') && !IntegerPart)
+						{
+							GPS_NMEA_latitude_dec = GPS_NMEA_latitude_dec * 10;
+							GPS_NMEA_latitude_dec += (uint32_t)(buffer[i] - '0');
+						}
+						break;
 					
+					case 3:																// NORTH/SOUTH
+						if(buffer[i] == 'N')
+						{
+							GPS_NMEA_NS = 1;
+						}
+						else if(buffer[i] == 'S')
+						{
+							GPS_NMEA_NS = 0;
+						}
+						break;
+					
+					case 4:																// LONGITUDE
+						if((buffer[i] >= '0') && (buffer[i] <= '9') && IntegerPart)
+						{
+							GPS_NMEA_longitude_int = GPS_NMEA_longitude_int * 10;
+							GPS_NMEA_longitude_int += (uint16_t)(buffer[i] - '0');
+						}
+						if(buffer[i] == '.') IntegerPart = 0;
+						if((buffer[i] >= '0') && (buffer[i] <= '9') && !IntegerPart)
+						{
+							GPS_NMEA_longitude_dec = GPS_NMEA_longitude_dec * 10;
+							GPS_NMEA_longitude_dec += (uint32_t)(buffer[i] - '0');
+						}
+						break;
+					
+					case 5:																// EAST/WEST
+						if(buffer[i] == 'E')
+						{
+							GPS_NMEA_EW = 1;
+						}
+						else if(buffer[i] == 'W')
+						{
+							GPS_NMEA_EW = 0;
+						}
+						break;
+					
+					case 6:																// FIX
+						GPSfix = buffer[i] - '0';
+						break;
+					
+					case 7:																// SATELLITES
+						if((buffer[i] >= '0') && (buffer[i] <= '9'))
+						{
+							GPSsats = GPSsats * 10;
+							GPSsats += (uint8_t)(buffer[i] - '0');
+						}
+						break;
+					
+					case 9:																// ALTITUDE
+						if(buffer[i] == '-') GPSaltitudeNeg = 1;
+						if((buffer[i] >= '0') && (buffer[i] <= '9') && IntegerPart)
+						{
+							GPSaltitude = GPSaltitude * 10;
+							GPSaltitude += (int32_t)(buffer[i] - '0');
+						}
+						if(buffer[i] == '.') IntegerPart = 0;
+						break;
+					
+					case 14:															// CHECKSUM (XOR of $ ... * bytes)
+						if(IntegerPart == 3)
+						{
+							if((buffer[i] >= '0') && (buffer[i] <= '9')) GPS_NMEA_checksum_toverify += (buffer[i] - '0');
+							else if((buffer[i] >= 'A') && (buffer[i] <= 'F')) GPS_NMEA_checksum_toverify += (buffer[i] - '7');
+							IntegerPart++;
+						}
+						if(IntegerPart == 2)
+						{
+							if((buffer[i] >= '0') && (buffer[i] <= '9')) GPS_NMEA_checksum_toverify = ((buffer[i] - '0') << 4);
+							else if((buffer[i] >= 'A') && (buffer[i] <= 'F')) GPS_NMEA_checksum_toverify = ((buffer[i] - '7') << 4);
+							IntegerPart++;
+						}
+						if(buffer[i] == '*') IntegerPart = 2;
+						break;
+					
+					default:
+						break;
+				}
+			}
+		}
+		
+		if(GPSaltitudeNeg) GPSaltitude *= -1;											// adjust the altitude value if negative
+		
+		if(GPS_NMEA_checksum_calculated != GPS_NMEA_checksum_toverify)
+											 GPS_NMEA_error_bitfield |= (1 << 2);		// GGA checksum error
+		
+	}else{
+		GPS_NMEA_error_bitfield |= (1 << 1);											// GGA buffer error
+	}
+}
+
+
+/*
+	Processes and parses an NMEA ZDA message located in the input buffer.
+	Accepts both GPZDA and GNZDA messages.
+	
+		GPShour						15
+		GPSminute					30
+		GPSsecond					43
+		GPSday						18
+		GPSmonth					10
+		GPSyear						2016
+		
+		GPS_NMEA_checksum_toverify
+		GPS_NMEA_checksum_calculated
+		
+	Checks the header, saves the checksum and calculates a control checksum.
+*/
+void UBLOX_process_ZDA(uint8_t *buffer)
+{
+	if(buffer[1] == 'G' && (buffer[2] == 'N' || buffer[2] == 'P') && buffer[3] == 'Z' && buffer[4] == 'D' && buffer[5] == 'A')
+	{
+		uint8_t i, j, IntegerPart;
+		
+		GPShour = 0;
+		GPSminute = 0;
+		GPSsecond = 0;
+		GPSday = 0;
+		GPSmonth = 0;
+		GPSyear = 0;
+		GPS_NMEA_checksum_calculated = 0;
+		GPS_NMEA_checksum_toverify = 0;
+		IntegerPart = 1;
+		
+		i = 1;
+		while(buffer[i] != '*')
+		{
+			GPS_NMEA_checksum_calculated ^= buffer[i];
+			i++;
+		}
+		
+		for(i = 6, j = 0; i < GPSBUFFER_SIZE && (j < 7); i++)
+		{
+			if(buffer[i] == ',')
+			{
+				j++;
+				IntegerPart = 1;
+			}else{
+				switch(j)
+				{
+					case 1:																// TIME
+						if((buffer[i] >= '0') && (buffer[i] <= '9'))
+						{
+							if(i == 7 || i == 8)
+							{
+								GPShour = GPShour * 10;
+								GPShour += (buffer[i] - '0');
+							}
+							if(i == 9 || i == 10)
+							{
+								GPSminute = GPSminute * 10;
+								GPSminute += (buffer[i] - '0');
+							}
+							if(i == 11 || i == 12)
+							{
+								GPSsecond = GPSsecond * 10;
+								GPSsecond += (buffer[i] - '0');
+							}
+						}
+						break;
+					
+					case 2:																// DAY
 						if((buffer[i] >= '0') && (buffer[i] <= '9'))
 						{
 							GPSday = GPSday * 10;
 							GPSday += (uint8_t)(buffer[i] - '0');
 						}
 						break;
-						
-					case 3: // Month
 					
+					case 3:																// MONTH
 						if((buffer[i] >= '0') && (buffer[i] <= '9'))
 						{
 							GPSmonth = GPSmonth * 10;
 							GPSmonth += (uint8_t)(buffer[i] - '0');
 						}
 						break;
-						
-					case 4: // Year
 					
+					case 4:																// YEAR
 						if((buffer[i] >= '0') && (buffer[i] <= '9'))
 						{
 							GPSyear = GPSyear * 10;
 							GPSyear += (uint8_t)(buffer[i] - '0');
 						}
 						break;
-						
-					case 7: // checksum (XOR of $-* bytes)
 					
+					case 7:																// CHECKSUM (XOR of $ ... * bytes)
 						if(IntegerPart == 3)
 						{
-							if((buffer[i] >= '0') && (buffer[i] <= '9')) GPSchecksum_verify += (buffer[i] - '0');
-							else if((buffer[i] >= 'A') && (buffer[i] <= 'F')) GPSchecksum_verify += (buffer[i] - '7');
+							if((buffer[i] >= '0') && (buffer[i] <= '9')) GPS_NMEA_checksum_toverify += (buffer[i] - '0');
+							else if((buffer[i] >= 'A') && (buffer[i] <= 'F')) GPS_NMEA_checksum_toverify += (buffer[i] - '7');
 							IntegerPart++;
 						}
 						if(IntegerPart == 2)
 						{
-							if((buffer[i] >= '0') && (buffer[i] <= '9')) GPSchecksum_verify = ((buffer[i] - '0') << 4);
-							else if((buffer[i] >= 'A') && (buffer[i] <= 'F')) GPSchecksum_verify = ((buffer[i] - '7') << 4);
+							if((buffer[i] >= '0') && (buffer[i] <= '9')) GPS_NMEA_checksum_toverify = ((buffer[i] - '0') << 4);
+							else if((buffer[i] >= 'A') && (buffer[i] <= 'F')) GPS_NMEA_checksum_toverify = ((buffer[i] - '7') << 4);
 							IntegerPart++;
 						}
 						if(buffer[i] == '*') IntegerPart = 2;
@@ -1021,18 +1063,25 @@ void UBLOX_process_ZDA(uint8_t *buffer)
 
 
 /*
-
+	Function to construct a telemetry string according to UKHAS specification. It uses decimal degrees format for Latitude and Longitude.
+	
+	$$CALLSIGN,sentence_id,time,latitude,longitude,altitude,satellites,fix,solar panel voltage,battery voltage,internal temperature,error*CHECKSUM\n
+	$$$$TT7F1,1,20:31:15,49.49171,18.22271,1131,11,3,2048,4120,15, *0C5D\n
+	
+	Checksum is calculated on bytes between the last dollar sign '$' and the asterisk '*' using CRC_XMODEM_UPDATE function.
+	The telemetry string must end with the new line '\n' character.
+	In case of lost GPS FIX, the last valid position and altitude data are used.
 */
-uint32_t TX_BUFFER_fill_NMEA(uint8_t *buffer, uint32_t sequence)
+uint32_t UBLOX_construct_telemetry_UBX(uint8_t *buffer, uint32_t sequence)
 {
-	buffer[0] = '$';
-	buffer[1] = '$';
-	buffer[2] = 'T';
-	buffer[3] = 'T';
-	buffer[4] = '7';
-	buffer[5] = 'F';
-	buffer[6] = ',';
-	sequence = 7;
+	for(uint8_t i = 0; i < TELEMETRY_SYNC_BYTES; i++) buffer[sequence++] = '$';
+	
+	// CALLSIGN
+	uint8_t x = 0;
+	while(RTTY_callsign[x] != '\0') buffer[sequence++] = RTTY_callsign[x++];
+	buffer[sequence++] = ',';
+	
+	// TIME
 	sequence = ASCII_32bit_transmit(telemCount, buffer, sequence);
 	buffer[sequence++] = ',';
 	sequence = ASCII_8bit_2DEC_transmit(GPShour, buffer, sequence);
@@ -1041,82 +1090,257 @@ uint32_t TX_BUFFER_fill_NMEA(uint8_t *buffer, uint32_t sequence)
 	buffer[sequence++] = ':';
 	sequence = ASCII_8bit_2DEC_transmit(GPSsecond, buffer, sequence);
 	buffer[sequence++] = ',';
-	if(GPSfix > 0 && GPSchecksum == GPSchecksum_verify)	// if the fix is not valid or the GGA message was corrupt, retransmit last valid position data
-	{
-		if(GPSlatNS == 0) buffer[sequence++] = '-';
-		sequence = ASCII_16bit_transmit((uint16_t)GPSlat_int, buffer, sequence);
-		buffer[sequence++] = '.';
-		sequence = ASCII_32bit_LATLON_transmit((uint32_t)GPSlat_dec, buffer, sequence);		// must fill '0's after decimal point
-		buffer[sequence++] = ',';
-		if(GPSlonEW == 0) buffer[sequence++] = '-';
-		sequence = ASCII_16bit_transmit((uint16_t)GPSlon_int, buffer, sequence);
-		buffer[sequence++] = '.';
-		sequence = ASCII_32bit_LATLON_transmit((uint32_t)GPSlon_dec, buffer, sequence);		// must fill '0's after decimal point
-		buffer[sequence++] = ',';
-		if(GPSaltNeg) buffer[sequence++] = '-';
-		sequence = ASCII_32bit_transmit(GPSalt, buffer, sequence);
-		GPSlat_int_L = GPSlat_int;
-		GPSlat_dec_L = GPSlat_dec;
-		GPSlon_int_L = GPSlon_int;
-		GPSlon_dec_L = GPSlon_dec;
-		GPSlatNS_L = GPSlatNS;
-		GPSlonEW_L = GPSlonEW;
-		GPSaltNeg_L = GPSaltNeg;
-		GPSalt_L = GPSalt;
-	}else{
-		if(GPSlatNS_L == 0) buffer[sequence++] = '-';
-		sequence = ASCII_16bit_transmit((uint16_t)GPSlat_int_L, buffer, sequence);
-		buffer[sequence++] = '.';
-		sequence = ASCII_32bit_LATLON_transmit((uint32_t)GPSlat_dec_L, buffer, sequence);	// must fill '0's after decimal point
-		buffer[sequence++] = ',';
-		if(GPSlonEW_L == 0) buffer[sequence++] = '-';
-		sequence = ASCII_16bit_transmit((uint16_t)GPSlon_int_L, buffer, sequence);
-		buffer[sequence++] = '.';
-		sequence = ASCII_32bit_LATLON_transmit((uint32_t)GPSlon_dec_L, buffer, sequence);	// must fill '0's after decimal point
-		buffer[sequence++] = ',';
-		if(GPSaltNeg_L) buffer[sequence++] = '-';
-		sequence = ASCII_32bit_transmit(GPSalt_L, buffer, sequence);
-	}
+	
+	// DATE
+	sequence = ASCII_16bit_transmit(GPSyear, buffer, sequence);
+	sequence = ASCII_8bit_2DEC_transmit(GPSmonth, buffer, sequence);
+	sequence = ASCII_8bit_2DEC_transmit(GPSday, buffer, sequence);
 	buffer[sequence++] = ',';
+	
+	// POSITION
+	if(GPSfix > 0)
+	{
+		// LATITUDE
+		if(GPS_UBX_latitude < 0) buffer[sequence++] = '-';
+		sequence = ASCII_8bit_transmit((uint8_t)abs(GPS_UBX_latitude / 10000000), buffer, sequence);
+		buffer[sequence++] = '.';
+		sequence = ASCII_32bit_LATLON_DECIMAL_transmit((uint32_t)(labs(GPS_UBX_latitude) % 10000000) / 100, buffer, sequence, 5);
+		buffer[sequence++] = ',';
+		
+		// LONGITUDE
+		if(GPS_UBX_longitude < 0) buffer[sequence++] = '-';
+		sequence = ASCII_8bit_transmit((uint8_t)abs(GPS_UBX_longitude / 10000000), buffer, sequence);
+		buffer[sequence++] = '.';
+		sequence = ASCII_32bit_LATLON_DECIMAL_transmit((uint32_t)(labs(GPS_UBX_longitude) % 10000000) / 100, buffer, sequence, 5);
+		buffer[sequence++] = ',';
+		
+		// ALTITUDE
+		if(GPSaltitude < 0) buffer[sequence++] = '-';
+		sequence = ASCII_32bit_transmit((uint32_t)abs(GPSaltitude), buffer, sequence);
+		buffer[sequence++] = ',';
+		
+		// KEEP LATEST VALID VALUES
+		GPS_UBX_latitude_L = GPS_UBX_latitude;
+		GPS_UBX_longitude_L = GPS_UBX_longitude;
+		GPSaltitude_L = GPSaltitude;
+	}
+	else																				// no fix, retransmit last valid position data
+	{
+		// LATITUDE
+		if(GPS_UBX_latitude_L < 0) buffer[sequence++] = '-';
+		sequence = ASCII_8bit_transmit((uint8_t)abs(GPS_UBX_latitude_L / 10000000), buffer, sequence);
+		buffer[sequence++] = '.';
+		sequence = ASCII_32bit_LATLON_DECIMAL_transmit((uint32_t)(labs(GPS_UBX_latitude_L) % 10000000) / 100, buffer, sequence, 5);
+		buffer[sequence++] = ',';
+		
+		// LONGITUDE
+		if(GPS_UBX_longitude_L < 0) buffer[sequence++] = '-';
+		sequence = ASCII_8bit_transmit((uint8_t)abs(GPS_UBX_longitude_L / 10000000), buffer, sequence);
+		buffer[sequence++] = '.';
+		sequence = ASCII_32bit_LATLON_DECIMAL_transmit((uint32_t)(labs(GPS_UBX_longitude_L) % 10000000) / 100, buffer, sequence, 5);
+		buffer[sequence++] = ',';
+		
+		// ALTITUDE
+		if(GPSaltitude_L < 0) buffer[sequence++] = '-';
+		sequence = ASCII_32bit_transmit((uint32_t)abs(GPSaltitude_L), buffer, sequence);
+		buffer[sequence++] = ',';
+	}
+	
+	// SATELLITES
 	sequence = ASCII_8bit_transmit(GPSsats, buffer, sequence);
 	buffer[sequence++] = ',';
-	sequence = ASCII_8bit_transmit(GPSfix, buffer, sequence);
+	
+	// GPS FIX
+	buffer[sequence++] = GPSfix + '0';
 	buffer[sequence++] = ',';
 	
-	//uint32_t AD3 = ((uint32_t)AD3data * 3300) / 4096;							// convert ADC reading to mV
-	uint32_t AD9 = ((uint32_t)AD9data * 6600) / 4096;							// convert ADC reading to mV
-	float temperatureF = (float)AD15data * 0.30402 - 274.896 + TEMP_OFFSET;		// convert ADC reading to °C
-	
-	//sequence = ASCII_16bit_transmit((uint16_t)AD3, buffer, sequence);
+	// POWER SAVE / CONTINUOUS MODE
+	//buffer[sequence++] = GPSpowersavemodestate + '0';
 	//buffer[sequence++] = ',';
+	
+	// ADC READINGS
+	uint32_t AD3 = ((uint32_t)AD3data * 3300) / 4096;									// converting raw ADC reading to mV
+	uint32_t AD9 = ((uint32_t)AD9data * 6600) / 4096;									// converting raw ADC reading to mV
+	float temperatureF = (float)AD15data * 0.30402 - 274.896 + TEMP_OFFSET;				// converting raw ADC reading to °C
+	sequence = ASCII_16bit_transmit((uint16_t)AD3, buffer, sequence);
+	buffer[sequence++] = ',';
 	sequence = ASCII_16bit_transmit((uint16_t)AD9, buffer, sequence);
 	buffer[sequence++] = ',';
 	if(temperatureF < 0) buffer[sequence++] = '-';
-	sequence = ASCII_8bit_transmit((uint8_t)abs(temperatureF), buffer, sequence);
+	sequence = ASCII_16bit_transmit((uint16_t)abs(temperatureF), buffer, sequence);
 	buffer[sequence++] = ',';
 	
-	if(GPSfix == 0) GPSerror |= (1 << 4);
-	if(GPSchecksum != GPSchecksum_verify) GPSerror |= (1 << 2);
-	if(GPSnavigation != 6) GPSerror |= (1 << 6);
-	if(GPSerror == 0b01111111) GPSerror = 0b01011111;		// character doesn't show in DL-FLDIGI, needs to be changed
-	if(GPSerror == 0b00101100) GPSerror = 0b01001100;		// character corresponds to ',' which is used in the parser
-	if(GPSerror == 0b00101010) GPSerror = 0b01001010;		// character corresponds to '*' which is used in the parser
-	if(GPSerror == 0b00100100) GPSerror = 0b01000100;		// character corresponds to '$' which is used in the parser
+	// ERROR BITFIELD
+	if(GPSnavigation != 6) GPS_UBX_error_bitfield |= (1 << 6);							// check whether the module is in AIRBORNE MODE
+	if(GPS_UBX_error_bitfield == 0b01111111) GPS_UBX_error_bitfield = 0b01011111;
+	if(GPS_UBX_error_bitfield == 0b00101100) GPS_UBX_error_bitfield = 0b01001100;
+	if(GPS_UBX_error_bitfield == 0b00101010) GPS_UBX_error_bitfield = 0b01001010;
+	if(GPS_UBX_error_bitfield == 0b00100100) GPS_UBX_error_bitfield = 0b01000100;
+	buffer[sequence++] = GPS_UBX_error_bitfield;
 	
-	buffer[sequence++] = GPSerror;
-	GPSchecksum = CRC16_checksum(buffer, sequence, 2);
+	// CHECKSUM
+	uint16_t crc = CRC16_checksum(buffer, sequence, TELEMETRY_SYNC_BYTES);
 	buffer[sequence++] = '*';
-	sequence = ASCII_16bit_HEX_transmit(GPSchecksum, buffer, sequence);
+	sequence = ASCII_16bit_HEX_transmit(crc, buffer, sequence);
 	
-	//buffer[sequence++] = 0x0D;							// CR '\r' - not advised to use
-	buffer[sequence++] = 0x0A;								// LF '\n'
-	buffer[sequence] = 0x00;								// NUL '\0'
+	// NEW LINE
+	buffer[sequence++] = 0x0A;
 	
-	GPSerror = 0b00100000;
-	GPSnavigation = 0;
-	telemetry_len = sequence - 1;
+	GPSnavigation = 0;																	// reset the variable ahead of another telemetry round
+	telemetry_len = sequence;															// save the telemetry length to a global variable
+	GPS_UBX_error_bitfield = 0b00100000;												// reset the bitfield ahead of another telemetry round
 	
 	return sequence;
 }
 
-#endif // NMEA
+
+/*
+	Function to construct a telemetry string according to UKHAS specification. It uses NMEA format for Latitude and Longitude.
+	
+	$$CALLSIGN,sentence_id,time,latitude,longitude,altitude,satellites,fix,solar panel voltage,battery voltage,internal temperature,error*CHECKSUM\n
+	$$$$TT7F1,1,20:31:15,4949.171,01822.271,1131,11,3,2048,4120,15, *0C5D\n
+	
+	Checksum is calculated on bytes between the last dollar sign '$' and the asterisk '*' using CRC_XMODEM_UPDATE function.
+	The telemetry string must end with the new line '\n' character.
+	In case of lost GPS FIX, the last valid position and altitude data are used.
+*/
+uint32_t UBLOX_construct_telemetry_NMEA(uint8_t *buffer, uint32_t sequence)
+{
+	for(uint8_t i = 0; i < TELEMETRY_SYNC_BYTES; i++) buffer[sequence++] = '$';
+	
+	// CALLSIGN
+	uint8_t x = 0;
+	while(RTTY_callsign[x] != '\0') buffer[sequence++] = RTTY_callsign[x++];
+	buffer[sequence++] = ',';
+	
+	// TIME
+	sequence = ASCII_32bit_transmit(telemCount, buffer, sequence);
+	buffer[sequence++] = ',';
+	sequence = ASCII_8bit_2DEC_transmit(GPShour, buffer, sequence);
+	buffer[sequence++] = ':';
+	sequence = ASCII_8bit_2DEC_transmit(GPSminute, buffer, sequence);
+	buffer[sequence++] = ':';
+	sequence = ASCII_8bit_2DEC_transmit(GPSsecond, buffer, sequence);
+	buffer[sequence++] = ',';
+	
+	// DATE
+	sequence = ASCII_16bit_transmit(GPSyear, buffer, sequence);
+	sequence = ASCII_8bit_2DEC_transmit(GPSmonth, buffer, sequence);
+	sequence = ASCII_8bit_2DEC_transmit(GPSday, buffer, sequence);
+	buffer[sequence++] = ',';
+	
+	// POSITION
+	if(GPSfix > 0 && !(GPS_NMEA_error_bitfield & (0x01 << 2)))
+	{
+		// LATITUDE
+		if(GPS_NMEA_NS == 0) buffer[sequence++] = '-';
+		sequence = ASCII_16bit_transmit(GPS_NMEA_latitude_int, buffer, sequence);
+		buffer[sequence++] = '.';
+		sequence = ASCII_32bit_LATLON_DECIMAL_transmit(GPS_NMEA_latitude_dec, buffer, sequence, 5);
+		buffer[sequence++] = ',';
+		
+		// LONGITUDE
+		if(GPS_NMEA_EW == 0) buffer[sequence++] = '-';
+		sequence = ASCII_16bit_transmit(GPS_NMEA_longitude_int, buffer, sequence);
+		buffer[sequence++] = '.';
+		sequence = ASCII_32bit_LATLON_DECIMAL_transmit(GPS_NMEA_longitude_dec, buffer, sequence, 5);
+		buffer[sequence++] = ',';
+		
+		// ALTITUDE
+		if(GPSaltitude < 0) buffer[sequence++] = '-';
+		sequence = ASCII_32bit_transmit((uint32_t)abs(GPSaltitude), buffer, sequence);
+		buffer[sequence++] = ',';
+		
+		// KEEP LATEST VALID VALUES
+		GPS_NMEA_NS_L = GPS_NMEA_NS;
+		GPS_NMEA_EW_L = GPS_NMEA_EW;
+		GPSaltitude_L = GPSaltitude;
+		GPS_NMEA_latitude_int_L = GPS_NMEA_latitude_int;
+		GPS_NMEA_latitude_dec_L = GPS_NMEA_latitude_dec;
+		GPS_NMEA_longitude_int_L = GPS_NMEA_longitude_int;
+		GPS_NMEA_longitude_dec_L = GPS_NMEA_longitude_dec;
+	}
+	else																				// no fix or GGA corrupt, retransmit last valid position data
+	{
+		// LATITUDE
+		if(GPS_NMEA_NS_L == 0) buffer[sequence++] = '-';
+		sequence = ASCII_16bit_transmit(GPS_NMEA_latitude_int_L, buffer, sequence);
+		buffer[sequence++] = '.';
+		sequence = ASCII_32bit_LATLON_DECIMAL_transmit(GPS_NMEA_latitude_dec_L, buffer, sequence, 5);
+		buffer[sequence++] = ',';
+		
+		// LONGITUDE
+		if(GPS_NMEA_EW_L == 0) buffer[sequence++] = '-';
+		sequence = ASCII_16bit_transmit(GPS_NMEA_longitude_int_L, buffer, sequence);
+		buffer[sequence++] = '.';
+		sequence = ASCII_32bit_LATLON_DECIMAL_transmit(GPS_NMEA_longitude_dec_L, buffer, sequence, 5);
+		buffer[sequence++] = ',';
+		
+		// ALTITUDE
+		if(GPSaltitude_L < 0) buffer[sequence++] = '-';
+		sequence = ASCII_32bit_transmit((uint32_t)abs(GPSaltitude_L), buffer, sequence);
+		buffer[sequence++] = ',';
+	}
+	
+	// SATELLITES
+	sequence = ASCII_8bit_transmit(GPSsats, buffer, sequence);
+	buffer[sequence++] = ',';
+	
+	// GPS FIX
+	buffer[sequence++] = GPSfix + '0';
+	buffer[sequence++] = ',';
+	
+	// POWER SAVE / CONTINUOUS MODE
+	//buffer[sequence++] = GPSpowersavemodestate + '0';
+	//buffer[sequence++] = ',';
+	
+	// ADC READINGS
+	uint32_t AD3 = ((uint32_t)AD3data * 3300) / 4096;									// converting raw ADC reading to mV
+	uint32_t AD9 = ((uint32_t)AD9data * 6600) / 4096;									// converting raw ADC reading to mV
+	float temperatureF = (float)AD15data * 0.30402 - 274.896 + TEMP_OFFSET;				// converting raw ADC reading to °C
+	sequence = ASCII_16bit_transmit((uint16_t)AD3, buffer, sequence);
+	buffer[sequence++] = ',';
+	sequence = ASCII_16bit_transmit((uint16_t)AD9, buffer, sequence);
+	buffer[sequence++] = ',';
+	if(temperatureF < 0) buffer[sequence++] = '-';
+	sequence = ASCII_16bit_transmit((uint16_t)abs(temperatureF), buffer, sequence);
+	buffer[sequence++] = ',';
+	
+	// ERROR BITFIELD
+	if(GPSfix == 0) GPS_NMEA_error_bitfield |= (1 << 4);
+	if(GPSnavigation != 6) GPS_NMEA_error_bitfield |= (1 << 6);
+	if(GPS_NMEA_error_bitfield == 0b01111111) GPS_NMEA_error_bitfield = 0b01011111;
+	if(GPS_NMEA_error_bitfield == 0b00101100) GPS_NMEA_error_bitfield = 0b01001100;
+	if(GPS_NMEA_error_bitfield == 0b00101010) GPS_NMEA_error_bitfield = 0b01001010;
+	if(GPS_NMEA_error_bitfield == 0b00100100) GPS_NMEA_error_bitfield = 0b01000100;
+	buffer[sequence++] = GPS_NMEA_error_bitfield;
+	
+	// CHECKSUM
+	uint16_t crc = CRC16_checksum(buffer, sequence, TELEMETRY_SYNC_BYTES);
+	buffer[sequence++] = '*';
+	sequence = ASCII_16bit_HEX_transmit(crc, buffer, sequence);
+	
+	// NEW LINE
+	buffer[sequence++] = 0x0A;
+	
+	GPSnavigation = 0;																	// reset the variable ahead of another telemetry round
+	telemetry_len = sequence;															// save the telemetry length to a global variable
+	GPS_NMEA_error_bitfield = 0b00100000;												// reset the bitfield ahead of another telemetry round
+	
+	return sequence;
+}
+
+
+/*
+	Function to prepare the module and enter the chosen POWER SAVING mode.
+	First it turns off periodic messages, then it turns of GLONASS (required for POWER SAVE mode), sets up the desired mode
+	and a wake up period and switches to the POWER SAVE mode.
+*/
+void UBLOX_powersave_mode_init(uint8_t * mode)
+{
+	GPS_UBX_ack_error = 0;
+	UBLOX_request_UBX(setNMEAoff, 28, 10, UBLOX_parse_ACK);								// turn off the periodic output
+	UBLOX_request_UBX(setGPSonly, 28, 10, UBLOX_parse_ACK);								// turn off GLONASS (needs to be done for POWERSAVE mode)
+	UBLOX_request_UBX(mode, 52, 10, UBLOX_parse_ACK);									// set up the desired UBX-CFG-PM2 (0x06 0x3B) settings
+	UBLOX_request_UBX(setPowerSaveMode, 10, 10, UBLOX_parse_ACK);						// switch to POWERSAVE mode
+}
