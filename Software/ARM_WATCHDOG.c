@@ -6,7 +6,7 @@
  */ 
 
 
-#include "sam.h"
+#include <asf.h>
 #include "ARM_WATCHDOG.h"
 
 
@@ -51,5 +51,5 @@ void WATCHDOG_disable(void)
 */
 void WATCHDOG_restart(void)
 {
-	WDT->WDT_MR = (0xA5 << 24) | WDT_CR_WDRSTT;												// restarts the WatchDog
+	WDT->WDT_CR = (0xA5 << 24) | WDT_CR_WDRSTT;												// restarts the WatchDog
 }
