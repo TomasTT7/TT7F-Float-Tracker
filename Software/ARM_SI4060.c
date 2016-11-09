@@ -928,7 +928,7 @@ void SI4060_tx_APRS_GFSK_sync(void)
 	SI4060_modulation(3, 0);										// GFSK, synchronous
 	SI4060_data_rate(0x002EE0);										// 12000 for 1200Hz sine wave and 22000 for 2200Hz sine wave
 	SI4060_filter_coeffs();											// set up the FIR filter
-	SI4060_frequency(FREQUENCY_APRS);
+	SI4060_frequency(APRS_tx_frequency);
 	SI4060_frequency_deviation(TX_DEVIATION_APRS);
 	SI4060_power_level(POWER_LEVEL);
 	SI4060_change_state(0x07);
@@ -1102,7 +1102,7 @@ void SI4060_tx_APRS_GFSK_sync_BITS(uint8_t * buffer, uint32_t startFlagsEnd, uin
 	SI4060_modulation(3, 0);										// GFSK, synchronous
 	SI4060_data_rate(0x002EE0);										// 12000 for 1200Hz sine wave and 22000 for 2200Hz sine wave
 	SI4060_filter_coeffs();											// set up the FIR filter
-	SI4060_frequency(FREQUENCY_APRS);
+	SI4060_frequency(APRS_tx_frequency);
 	SI4060_frequency_deviation(TX_DEVIATION_APRS);
 	SI4060_power_level(POWER_LEVEL);
 	SI4060_change_state(0x07);
@@ -1237,7 +1237,7 @@ void SI4060_tx_APRS_GFSK_async(void)
 	SI4060_modulation(3, 0);										// GFSK, synchronous
 	SI4060_data_rate(0x002EE0);										// 12000 for 1200Hz sine wave and 22000 for 2200Hz sine wave
 	SI4060_filter_coeffs();											// set up the FIR filter
-	SI4060_frequency(FREQUENCY_APRS);
+	SI4060_frequency(APRS_tx_frequency);
 	SI4060_frequency_deviation(TX_DEVIATION_APRS);
 	SI4060_power_level(POWER_LEVEL);
 	SI4060_change_state(0x07);
@@ -1424,7 +1424,7 @@ void SI4060_tx_APRS_GFSK_async(void)
 void SI4060_tx_APRS_look_up(void)
 {
 	SI4060_modulation(0, 1);										// uses CW asynchronous modulation
-	SI4060_frequency(FREQUENCY_APRS - FREQ_OFFSET);					// FREQ_OFFSET is applied to center the created sine wave on the desired frequency
+	SI4060_frequency(APRS_tx_frequency - FREQ_OFFSET);				// FREQ_OFFSET is applied to center the created sine wave on the desired frequency
 	SI4060_power_level(POWER_LEVEL);
 	SI4060_change_state(0x07);
 	
@@ -1535,7 +1535,7 @@ void SI4060_tx_APRS_look_up(void)
 void SI4060_tx_APRS_look_up_BITS(uint8_t * buffer, uint32_t startFlagsEnd, uint32_t endFlagsStart)
 {
 	SI4060_modulation(0, 1);										// uses CW asynchronous modulation
-	SI4060_frequency(FREQUENCY_APRS - FREQ_OFFSET);					// FREQ_OFFSET is applied to center the created sine wave on the desired frequency
+	SI4060_frequency(APRS_tx_frequency - FREQ_OFFSET);				// FREQ_OFFSET is applied to center the created sine wave on the desired frequency
 	SI4060_power_level(POWER_LEVEL);
 	SI4060_change_state(0x07);
 	

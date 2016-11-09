@@ -15,7 +15,7 @@ SI4060 AND SAM3S8 WIRING
 #include "stdint.h"
 
 
-#define BIT_DEBUG										// debug for APRS packets via USB serial
+//#define BIT_DEBUG										// debug for APRS packets via USB serial
 
 
 #define TCXO				32000000UL
@@ -185,6 +185,8 @@ static volatile uint8_t APRS_lookup_wave = 0;
 
 extern uint16_t APRS_packet_size;									// holds the length of the current APRS packet
 extern uint8_t APRSpacket[APRS_BUFFER_SIZE];						// array for the APRS packet
+
+extern uint32_t APRS_tx_frequency;
 
 
 // Functions
