@@ -179,8 +179,8 @@ static uint8_t GPS_UBX_buffer_error = 0;
 static uint8_t GPS_NMEA_checksum_toverify = 0;
 static uint8_t GPS_NMEA_checksum_calculated = 0;
 
-static uint8_t GPS_UBX_error_bitfield;							// default no ERRORs 0b00100000
 static uint8_t GPS_NMEA_error_bitfield;							// default no ERRORs 0b00100000
+extern uint8_t GPS_UBX_error_bitfield;							// default no ERRORs 0b00100000, global for APRS use
 
 extern uint16_t GPS_NMEA_latitude_int;							// YYYY, +
 extern uint32_t GPS_NMEA_latitude_dec;							// YYYYY, +
