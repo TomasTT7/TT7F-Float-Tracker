@@ -31,22 +31,17 @@ static uint16_t num = 0;
 */
 extern uint8_t APRSpacket[APRS_BUFFER_SIZE];			// max APRS packet size
 
-extern uint8_t APRSHour;
-extern uint8_t APRSMinute;
-extern uint8_t APRSSecond;
-extern uint8_t APRSDay;
-extern uint8_t APRSMonth;
-extern uint16_t APRSYear;
-extern float APRSLatitude;
-extern float APRSLongitude;
-extern uint16_t APRSAltitude;
-extern uint32_t APRSSequence;
-extern uint16_t APRSValue1;
-extern uint16_t APRSValue2;
-extern uint16_t APRSValue3;
-extern uint16_t APRSValue4;
-extern uint16_t APRSValue5;
-extern uint16_t APRSBitfield;
+extern uint8_t APRShour;
+extern uint8_t APRSminute;
+extern uint8_t APRSsecond;
+extern uint8_t APRSday;
+extern uint8_t APRSmonth;
+extern uint16_t APRSyear;
+
+extern float APRSlatitude;
+extern float APRSlongitude;
+extern int32_t APRSaltitude;
+
 extern uint16_t APRSlat_int;
 extern uint16_t APRSlon_int;
 extern uint32_t APRSlat_dec;
@@ -54,10 +49,22 @@ extern uint32_t APRSlon_dec;
 extern uint8_t APRSlatNS;
 extern uint8_t APRSlonEW;
 
+extern uint32_t APRSsequence;
+extern uint16_t APRSvalue1;
+extern uint16_t APRSvalue2;
+extern uint16_t APRSvalue3;
+extern uint16_t APRSvalue4;
+extern uint16_t APRSvalue5;
+extern uint8_t APRSbitfield;
+
 extern uint8_t APRS_packet_mode;						// holds the choice of what type of packet should APRS_packet_construct() create
 extern uint8_t APRS_show_alt_B91;						// 0 - don't show	1 - show altitude in B91 encoded position
 extern uint16_t APRS_packet_size;						// holds the length of the current APRS packet
-extern uint8_t *pointerSSDVpacket;
+
+static uint32_t backlog_store_pointer;					// holds the current page number (in flash) to write the new backlog telemetry to
+static uint32_t backlog_tx_pointer;						// holds the current page number with backlogged telemetry to read and transmit
+static uint32_t backlog_step = 78;						// size of the jump inside a circular buffer of backlogged telemetries
+static uint32_t backlog_step_count = 3;					// number of jumps to do
 
 
 // Functions
@@ -86,6 +93,9 @@ void APRS_telemetry_EQNS(uint8_t *buffer, char *string, char *addressee);
 void APRS_telemetry_BITS(uint8_t *buffer, char *string, char *addressee);
 void APRS_comment(uint8_t *buffer, char *string);
 void APRS_comment_altitude(uint8_t *buffer, uint32_t alt);
+void APRS_comment_backlog(uint8_t *buffer);
+void APRS_encode_backlog(uint8_t *buffer);
+void APRS_store_backlog(void);
 void APRS_packet_construct(uint8_t *buffer);
 
 

@@ -8,6 +8,7 @@
 #include "sam.h"
 #include "math.h"
 #include "ARM_APRS.h"
+#include "ARM_EEFC.h"
 
 
 #define lo8(x) ((x)&0xff)
@@ -36,8 +37,8 @@ void Base91_u16_2DEC_encode(uint16_t number, uint8_t *buffer)
 		 buffer[num++] = '!';									// decoded as 0
 		 buffer[num++] = '!';									// decoded as 0
 	}else{
-		buffer[num++] = (number / 91) + '0';
-		buffer[num++] = (number % 91) + '0';
+		buffer[num++] = (number / 91) + '!';
+		buffer[num++] = (number % 91) + '!';
 	}
 }
 
@@ -235,19 +236,16 @@ void APRS_base91_SSDV_encode(uint8_t *BASE91buffer, uint8_t *SSDVpacket)
 
 /*
 	Experimental packet.
+	
+	SSDV packet in the Comment Field.
 */
 void APRS_SSDV_packet(uint8_t *buffer, uint8_t *packet)
 {
-	// SSDV packet in the Comment Field
-	
 	buffer[num++] = '{';										// User-Defined APRS packet format
 	//buffer[num++] = '{';										// Experimental (DL7AD)
 	//buffer[num++] = 'I';										// Image (DL7AD)
 	
 	for(uint16_t i = 0; i < 50; i++) buffer[num++] = packet[i];
-	//for(uint16_t i = 33; i < 62; i++) buffer[num++] = i;
-	//for(uint16_t i = 63; i < 95; i++) buffer[num++] = i;
-	//for(uint16_t i = 96; i < 124; i++) buffer[num++] = i;
 }
 
 
@@ -466,7 +464,7 @@ void APRS_telemetry_uncompressed(uint8_t *buffer, uint16_t sequence, int16_t val
 void APRS_telemetry_base91(uint8_t *buffer, uint32_t sequence, uint16_t value1, uint16_t value2,
 							uint16_t value3, uint16_t value4, uint16_t value5, uint8_t bitfield)
 {
-	uint16_t seq = sequence & 0x1FFF;							// handles the maximum value in case of the SEQUENCE counter
+	uint16_t seq = (uint16_t)(sequence % 8281);					// handles the maximum value in case of the SEQUENCE counter
 	
 	buffer[num++] = '|';
 	Base91_u16_2DEC_encode(seq, buffer);						// "SS" - sequence
@@ -474,8 +472,8 @@ void APRS_telemetry_base91(uint8_t *buffer, uint32_t sequence, uint16_t value1, 
 	Base91_u16_2DEC_encode(value2, buffer);						// "AA" - value 2
 	Base91_u16_2DEC_encode(value3, buffer);						// "AA" - value 3
 	Base91_u16_2DEC_encode(value4, buffer);						// "AA" - value 4
-	Base91_u16_2DEC_encode(value5, buffer);						// "AA" - value 5
-	Base91_u16_2DEC_encode(bitfield, buffer);					// "DD" - 8 bit bitfield
+	//Base91_u16_2DEC_encode(value5, buffer);						// "AA" - value 5
+	//Base91_u16_2DEC_encode((uint16_t)bitfield, buffer);			// "DD" - 8 bit bitfield
 	buffer[num++] = '|';
 }
 
@@ -489,10 +487,10 @@ void APRS_telemetry_base91(uint8_t *buffer, uint32_t sequence, uint16_t value1, 
 	Format: ":CALL-SSID:PARM."
 	
 	STRING: given the complexity of this message the information is passed as a string and needs to be constructed according to the rules
-		example:	"Vsolar,Vbatt,Tcpu,Sats,-"
+		example:	"Vsol,Vbatt,Tcpu,Sats,-"
 		
 	ADDRESSEE: must have 9 characters (fill the rest with 'space')
-		example:	"OK7DMT-0 "
+		example:	"OK7DMT-11"
 */
 void APRS_telemetry_PARM(uint8_t *buffer, char *string, char *addressee)
 {
@@ -526,7 +524,7 @@ void APRS_telemetry_PARM(uint8_t *buffer, char *string, char *addressee)
 		example:	"V,V,C,n,-"
 	
 	ADDRESSEE: must have 9 characters (fill the rest with 'space')
-		example:	"OK7DMT-0 "
+		example:	"OK7DMT-11"
 */
 void APRS_telemetry_UNIT(uint8_t *buffer, char *string, char *addressee)
 {
@@ -560,7 +558,7 @@ void APRS_telemetry_UNIT(uint8_t *buffer, char *string, char *addressee)
 		example:	"0,0.0008,0,0,0.0016,0,0,0.304,-273.15,0,1,0,0,1,0"
 	
 	ADDRESSEE: must have 9 characters (fill the rest with 'space')
-		example:	"OK7DMT-0 "
+		example:	"OK7DMT-11"
 	
 	APRS Message Format is defined to be 1 byte (identifier), 9 bytes (addressee), 1 byte (identifier) and 0-67 bytes (message text).
 	However, in this case a 54 byte EQNS. message did not get decoded while a 51 byte one did. No difference in message structure.
@@ -597,7 +595,7 @@ void APRS_telemetry_EQNS(uint8_t *buffer, char *string, char *addressee)
 		example:	"11111111,TT7F High Altitude Balloon"
 	
 	ADDRESSEE: must have 9 characters (fill the rest with 'space')
-		example:	"OK7DMT-0 "
+		example:	"OK7DMT-11"
 */
 void APRS_telemetry_BITS(uint8_t *buffer, char *string, char *addressee)
 {
@@ -647,6 +645,141 @@ void APRS_comment_altitude(uint8_t *buffer, uint32_t alt)
 	buffer[num++] = 'A';
 	buffer[num++] = '=';
 	ASCII_32bit_LATLON_transmit_APRS(altitude, buffer, 1);		// doesn't do negative altitude (don't know the APRS format for that)
+}
+
+
+/*
+	Function to insert a historical backlog retrieved from the flash memory into the comment section of an APRS packet.
+	It manages listing through the backlogs and holds the last read flash page in 'backlog_tx_pointer' (reset to 0 after MCU reset).
+	
+	The algorithm alternates between three modes.
+		First it makes 3 jumps stepping 78 backlogs.
+		Then does a next round of 8 jumps stepping 31 backlogs at a time.
+		And at last it switches to 19 jumps of 13 backlogs stepped over.
+	The reason is to alternate between quick overviews of the whole backlogged period and more detailed insight.
+	Once the 'backlog_tx_pointer' reaches 240 it wraps around and returns to the beginning.
+	
+	In case of an empty backlog (it hasn't been written since the initial programming) the function adds just a ' ' space character.
+	
+	State after MCU reset:
+		backlog_step		78
+		backlog_step_count	3
+*/
+void APRS_comment_backlog(uint8_t *buffer)
+{
+	uint8_t backlog_buffer[24];
+	
+	if(!backlog_step_count)																// cycle through backlog step sizes
+	{
+		if(backlog_step == 78)		{backlog_step = 31; backlog_step_count = 8;}
+		else if(backlog_step == 31)	{backlog_step = 13; backlog_step_count = 19;}
+		else if(backlog_step == 13)	{backlog_step = 78; backlog_step_count = 3;}
+	}
+	backlog_step_count--;
+	
+	backlog_tx_pointer = (backlog_tx_pointer + backlog_step) % 240;						// calculate the current sequence
+	
+	EEFC_read_bytes(0x00470100 + (256 * backlog_tx_pointer), 23, backlog_buffer);		// get the desired backlog
+	
+	buffer[num++] = ' ';
+	
+	if(backlog_buffer[0] != 0xFF && backlog_buffer[1] != 0xFF)							// don't attach empty backlogs
+	{
+		for(uint8_t i = 0; i < 23; i++) buffer[num++] = backlog_buffer[i];				// insert the backlog in the APRS packet
+	}	
+}
+
+
+/*
+	Creates an array of 23 bytes representing compressed telemetry.
+	Encodes year(1), month(1), day(1), hour(1), minute(1), latitude(4), longitude(4), altitude(2), value1(2), value2(2), value3(2), value4(2).
+	
+	Example:	0K#8=5MHyS(KbHH!!$F+V!*
+	
+	Decoding:
+		year		=	2016 + (buffer[0] - 48)
+		month		=	buffer[1] - 64
+		day			=	buffer[2] - 33
+		hour		=	buffer[3] - 33
+		minute		=	buffer[4] - 33
+		latitude	=	90.0 - ((buffer[5] - 33) * 753571 + (buffer[6] - 33) * 8281 + (buffer[7] - 33 ) * 91 + (buffer[8] - 33)) / 380926
+		longitude	=	-180.0 + ((buffer[9] - 33) * 753571 + (buffer[10] - 33) * 8281 + (buffer[11] - 33 ) * 91 + (buffer[12] - 33)) / 190463
+		altitude	=	1.002 ^ ((buffer[13] - 33) * 91 + (buffer[14] - 33)) * 0.3048
+		value1		=	(buffer[15] - 33) * 91 + (buffer[16] - 33)
+		value2		=	(buffer[17] - 33) * 91 + (buffer[18] - 33)
+		value3		=	(buffer[19] - 33) * 91 + (buffer[20] - 33)
+		value4		=	(buffer[21] - 33) * 91 + (buffer[22] - 33)
+*/
+void APRS_encode_backlog(uint8_t *buffer)
+{
+	uint32_t latitude = (uint32_t)((90.0f - APRSlatitude) * 380926.0f);
+	uint32_t longitude = (uint32_t)((180.0f + APRSlongitude) * 190463.0f);
+	uint16_t altitude = (uint16_t)(log((float)APRSaltitude * 3.28f) / log(1.002f)) % 8281;
+	
+	buffer[0] = (APRSyear - 2016) + '0';															// Year
+	buffer[1] = APRSmonth + '@';																	// Month
+	buffer[2] = APRSday + 33;																		// Day
+	buffer[3] = APRShour + 33;																		// Hour
+	buffer[4] = APRSminute + 33;																	// Minute
+	buffer[5] = latitude / 753571 + 33;																// Latitude
+	buffer[6] = (latitude % 753571) / 8281 + 33; 
+	buffer[7] = ((latitude % 753571) % 8281) / 91 + 33;
+	buffer[8] = ((latitude % 753571) % 8281) % 91 + 33; 
+	buffer[9] = longitude / 753571 + 33;															// Longitude
+	buffer[10] = (longitude % 753571) / 8281 + 33;
+	buffer[11] = ((longitude % 753571) % 8281) / 91 + 33;
+	buffer[12] = ((longitude % 753571) % 8281) % 91 + 33;
+	buffer[13] = altitude / 91 + 33;																// Altitude
+	buffer[14] = altitude % 91 + 33;
+	buffer[15] = APRSvalue1 / 91 + 33;																// Value 1
+	buffer[16] = APRSvalue1 % 91 + 33;
+	buffer[17] = APRSvalue2 / 91 + 33;																// Value 2
+	buffer[18] = APRSvalue2 % 91 + 33;
+	buffer[19] = APRSvalue3 / 91 + 33;																// Value 3
+	buffer[20] = APRSvalue3 % 91 + 33;
+	buffer[21] = APRSvalue4 / 91 + 33;																// Value 4
+	buffer[22] = APRSvalue4 % 91 + 33;
+}
+
+
+/*
+	Every time it's called the function encodes current telemetry data to a 23 byte array and stores it inside the MCU's flash memory.
+	Each backlog gets stored on one page of flash memory (256 bytes).
+	The algorithm uses 240 pages then circulates back and overwrites the oldest logs.
+	The number of the current page to write to is saved in flash on page 1792 (0x00470000).
+	The backlog starts at page 1793 (0x00470100) and spans to page 2033 (0x0047F100).
+	
+		page	1792		0x00470000					backlog pointer		written every 1 hour (flash endurance min 416 days)
+		pages	1793-2033	0x00470100-0x0047F100		240 backlogs		each written every 240 hours (flash endurance min 100000 days)
+	
+	This specific page selection is intended for SAM3S8B and its one plane 512kB flash memory.
+	In case of using a different MCU (SAM3S4B for example) the page numbering has to be adjusted!
+*/
+void APRS_store_backlog(void)
+{
+	uint8_t backlog_buffer[24];
+	uint8_t pointer_buffer[4];
+	
+	APRS_encode_backlog(backlog_buffer);									// encode the current data
+	
+	EEFC_read_bytes(0x00470000, 4, pointer_buffer);							// get the number of the page to write to
+	
+	backlog_store_pointer = (pointer_buffer[0] << 24) |
+							(pointer_buffer[1] << 16 |
+							(pointer_buffer[2] << 8) |
+							(pointer_buffer[3] << 0));
+							
+	if(backlog_store_pointer > 239) backlog_store_pointer = 0;				// the pointer reads 255 after initial programming
+	
+	EEFC_write_page(backlog_buffer, 24, 1793 + backlog_store_pointer);		// store the backlog in the flash memory
+	
+	backlog_store_pointer = (backlog_store_pointer + 1) % 240;				// point to the next position
+	
+	pointer_buffer[0] = backlog_store_pointer << 24;
+	pointer_buffer[1] = backlog_store_pointer << 16;
+	pointer_buffer[2] = backlog_store_pointer << 8;
+	pointer_buffer[3] = backlog_store_pointer << 0;
+	EEFC_write_page(pointer_buffer, 4, 1792);								// update the number of the page to write to next time
 }
 
 
@@ -718,37 +851,6 @@ void APRS_comment_altitude(uint8_t *buffer, uint32_t alt)
 		Source Address SSID			G3NRW-11				'11' balloon symbol
 		
 		Conflicting symbols in Information Field and Destination Address led to NO DECODE.
-	
-	
-	
-	WORKING FORMATS
-		"/HHMMSShYYYY.YYy/XXXXX.XXxO/A=FFFFFFcomment"					(timestamp, uncompressed position, altitude, comment)
-		"/HHMMSSh/YYYYXXXXOAAWcomment"									(timestamp, base91 position, comment)
-		"/DDHHMMzYYYY.YYy/XXXXX.XXxO/A=FFFFFF"							(timestampD, uncompressed position, altitude)
-		"/DDHHMMz/YYYYXXXXOAAW"											(timestampD, base91 position)
-		":call-SSID:PARM."												(telemetry parameters)
-		":call-SSID:UNIT."												(telemetry units)
-		":call-SSID:EQNS."												(telemetry equations)
-		":call-SSID:BITS."												(telemetry bits and message)
-		"T#SSS,val1,val2,val3,val4"										(uncompressed telemetry)
-		"/HHMMSSh/YYYYXXXXO   /A=FFFFFF"								(timestamp, base91 position, altitude in comment)
-		"/HHMMSSh/YYYYXXXXO   /A=FFFFFFT#SSS,val1,val2,val3,val4"		(timestamp, base91 position, altitude in comment, telemetry in comment - unparsed)
-	
-	FORMATS THAT DIDN'T DECODE
-		"!YYYY.YYy/XXXXX.XXxO/A=FFFFFF|SSAAAAAAAAAADD|"					(without timestamp, uncompressed position, altitude, base91 telemetry)
-		"!/YYYYXXXXOAAW|SSAAAAAAAAAADD|"								(without timestamp, base91 position, base91 telemetry)
-		"!YYYYXXXXOAAW"													(without timestamp, base91 position without Symbol Table Identifier)
-		"!/YYYYXXXXOAAW"												(without timestamp, base91 position)
-		"!YYYY.YYy/XXXXX.XXxO/A=FFFFFF"									(without timestamp, uncompressed position)
-		"!/YYYYXXXXOAAW/|SSAAAAAAAAAADD|"								(without timestamp, base91 position, added '/', base91 telemetry)
-		"/HHMMSSh/YYYYXXXXOAAW|SSAAAAAAAAAADD|"							(timestamp, base91 position, base91 telemetry)
-		"/HHMMSShYYYY.YYy/XXXXX.XXxO/A=FFFFFF|ssaaaaaaaaaadd|"			(timestamp, uncompressed position, altitude, base91 telemetry)
-		"/MMDDhhmmYYYY.YYy/XXXXX.XXxO/A=FFFFFF"							(timestampMD, uncompressed position, altitude)
-		"/MMDDhhmm/YYYYXXXXOAAW"										(timestampMD, base91 position)
-		"/HHMMSSh/YYYYXXXXOAAWcomment|SSAAAAAAAAAADD|"					(timestamp, base91 position, comment, base91 telemetry)
-		"/HHMMSShYYYY.YYy/XXXXX.XXxO/A=FFFFFFcomment|ssaaaaaaaaaadd|"	(timestamp, uncompressed position, altitude, comment, base91 telemetry)
-		"/HHMMSSh/YYYYXXXXOAAW/comment|SSAAAAAAAAAADD|"					(timestamp, base91 position, /comment, base91 telemetry)
-		"/HHMMSShYYYY.YYy/XXXXX.XXxO/A=FFFFFF/comment|ssaaaaaaaaaadd|"	(timestamp, uncompressed position, altitude, /comment, base91 telemetry)
 */
 void APRS_packet_construct(uint8_t *buffer)
 {
@@ -848,128 +950,52 @@ void APRS_packet_construct(uint8_t *buffer)
 	*/
 	if(APRS_packet_mode == 1)
 	{
-		APRS_comment(buffer, "/210048h4916.54N/01814.58EO");				// DECODED
+		buffer[num++] = '!';
+		APRS_position_base91(buffer, APRSlatitude, APRSlongitude, (float)APRSaltitude, 1);
+		APRS_comment_backlog(buffer);
+		APRS_telemetry_base91(buffer, APRSsequence, APRSvalue1, APRSvalue2, APRSvalue3, APRSvalue4, APRSvalue5, APRSbitfield);
 	}
 	else if(APRS_packet_mode == 2)
 	{
-		APRS_comment(buffer, "!4903.50N/07201.75W-Test /A=001234");			// NOTHING
+		APRS_telemetry_PARM(buffer, "Vsol,Vbatt,Tcpu,Sats,Fix", "OK7DMT-11");
 	}
 	else if(APRS_packet_mode == 3)
 	{
-		APRS_comment(buffer, "=4903.50N/07201.75W#PHG5132");				// NOTHING
+		APRS_telemetry_UNIT(buffer, "V,V,C", "OK7DMT-11");
 	}
 	else if(APRS_packet_mode == 4)
 	{
-		APRS_comment(buffer, "@092345/4903.50N/07201.75W>Test1234");		// NOTHING
+		APRS_telemetry_EQNS(buffer, "0,0.0008,0,0,0.0016,0,0,0.304,-260,0,1,0,0,1,0", "OK7DMT-11");
 	}
 	else if(APRS_packet_mode == 5)
 	{
-		APRS_comment(buffer, "[IO91SX]");									// DECODED (unknown message type)
+		APRS_telemetry_BITS(buffer, "11111111,TT7F High Altitude Balloon", "OK7DMT-11");
 	}
 	else if(APRS_packet_mode == 6)
 	{
-		APRS_telemetry_PARM(buffer, "Vsolar,Vbatt,Tcpu,Sats,-", "OK7DMT-11");
-	}
-	else if(APRS_packet_mode == 7)
-	{
-		APRS_telemetry_UNIT(buffer, "V,V,C,n,-", "OK7DMT-11");
-	}
-	else if(APRS_packet_mode == 8)
-	{
-		APRS_telemetry_EQNS(buffer, "0,0.0008,0,0,0.0016,0,0,0.304,-274,0,1,0,0,1,0", "OK7DMT-11");
-	}
-	else if(APRS_packet_mode == 9)
-	{
-		APRS_telemetry_BITS(buffer, "11111111,TT7F High Altitude Balloon", "OK7DMT-11");
-	}
-	else if(APRS_packet_mode == 10)
-	{
-		APRS_comment(buffer, "$GPGGA,102705,5157.9762,N,00029.3256,W,1,04,2.0,75.7,M,47.6,M,,*62");
-	}
-	else if(APRS_packet_mode == 11)
-	{
-		APRS_comment(buffer, "=/5L!!<*e7OS]S");
-	}
-	else if(APRS_packet_mode == 12)
-	{
-		APRS_comment(buffer, "@092345z/5L!!<*e7>{?!");
-	}
-	else if(APRS_packet_mode == 13)
-	{
-		APRS_comment(buffer, "!/5L!!<*e7OS]S");
-	}
-	else if(APRS_packet_mode == 14)
-	{
-		APRS_comment(buffer, "/092345z/5L!!<*e7>{?!");
-	}
-	else if(APRS_packet_mode == 15)
-	{
-		APRS_comment(buffer, ";LEADER   *092345z4903.50N/07201.75W>088/036");
-	}
-	else if(APRS_packet_mode == 16)
-	{
-		APRS_comment(buffer, ";LEADER   *092345z/5L!!<*e7>7P[");
-	}
-	else if(APRS_packet_mode == 17)
-	{
-		APRS_comment(buffer, ")AID #2!4903.50N/07201.75WA");
-	}
-	else if(APRS_packet_mode == 18)
-	{
-		APRS_comment(buffer, ")MOBIL!\5L!!<*e79VsT");
-	}
-	else if(APRS_packet_mode == 19)
-	{
-		APRS_comment(buffer, "$ULTW0031003702CE0069----000086A00001----011901CC00000005");
-	}
-	else if(APRS_packet_mode == 20)
-	{
-		APRS_comment(buffer, "_10090556c220s004g005t077r000p000P000h50b09900wRSW");
-	}
-	else if(APRS_packet_mode == 21)
-	{
-		APRS_comment(buffer, "!4903.50N/07201.75W_220/004g005t077r000p000P000h50b09900wRSW");
-	}
-	else if(APRS_packet_mode == 22)
-	{
-		APRS_comment(buffer, "@092345z4903.50N/07201.75W_220/004g005t-07r000p000P000h50b09900wRSW");
-	}
-	else if(APRS_packet_mode == 23)
-	{
-		APRS_comment(buffer, "T#005,199,000,255,073,123,01101001");
-	}
-	else if(APRS_packet_mode == 24)
-	{
-		APRS_comment(buffer, "{Q1qwerty");
-	}
-	else if(APRS_packet_mode == 25)
-	{
-		APRS_comment(buffer, "{{zasdfg");
-	}
-	else if(APRS_packet_mode == 26)
-	{
-		APRS_comment(buffer, ",191146,V,4214.2466,N,07303.5181,W,417.238,114.5,091099,14.7,W/GPS FIX");
-	}
-	else if(APRS_packet_mode == 27)
-	{
-		APRS_comment(buffer, "!4952.05N/00838.28E#MultimodeRelais DA 438.587MHz www.f42.info");
+		buffer[num++] = '/';
+		APRS_time_short(buffer, APRShour, APRSminute, APRSsecond);
+		APRS_position_base91(buffer, APRSlatitude, APRSlongitude, (float)APRSaltitude, 1);
+		APRS_telemetry_base91(buffer, APRSsequence, APRSvalue1, APRSvalue2, APRSvalue3, APRSvalue4, APRSvalue5, APRSbitfield);
 	}
 	else // APRS_packet_mode == 0
 	{
-		
+		buffer[num++] = '/';
+		APRS_time_short(buffer, APRShour, APRSminute, APRSsecond);
+		APRS_position_uncompressed(buffer, APRSlat_int, APRSlon_int, APRSlat_dec, APRSlon_dec, APRSlatNS, APRSlonEW, (uint32_t)APRSaltitude);
 	}
 	
 	// Frame Check Sequence - CRC-16-CCITT (0xFFFF)
 	uint16_t crc = 0xFFFF;
 	for(uint16_t i = 0; i < (num - APRSFLAGS); i++) crc = crc_ccitt_update(crc, buffer[APRSFLAGS+i]);
 	crc = ~crc;
-	buffer[num++] = crc & 0xFF; // FCS is sent low-byte first
-	buffer[num++] = (crc >> 8) & 0xFF; // and with the bits flipped
+	buffer[num++] = crc & 0xFF;									// FCS is sent low-byte first
+	buffer[num++] = (crc >> 8) & 0xFF;							// and with the bits flipped
 		
 	// the end Flags
 	buffer[num++] = 0x7E;
 	buffer[num++] = 0x7E;
 	buffer[num++] = 0x7E;
 	
-	APRS_packet_size = num; // packet length
+	APRS_packet_size = num;										// packet length
 }
