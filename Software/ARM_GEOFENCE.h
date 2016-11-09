@@ -7,7 +7,7 @@
 
 
 // GEOFENCE ARRAYS (longitude, latitude)
-const int32_t ArgParUru[] = {
+static const int32_t ArgParUru[] = {
 	-5779910,		-1867750,
 	-5348140,		-2666710,
 	-5713990,		-2977390,
@@ -18,7 +18,7 @@ const int32_t ArgParUru[] = {
 	-5779910,		-1867750
 	};
 
-const int32_t Australia[] = {
+static const int32_t Australia[] = {
 	14756840,		-4692030,
 	16602540,		-2915220,
 	14414060,		-918890,
@@ -27,7 +27,7 @@ const int32_t Australia[] = {
 	14756840,		-4692030
 	};
 
-const int32_t Brazil[] = {
+static const int32_t Brazil[] = {
 	-5704100,		-2976440,
 	-4965820,		-3445220,
 	-2830080,		-587830,
@@ -39,7 +39,7 @@ const int32_t Brazil[] = {
 	-5704100,		-2976440
 	};
 	
-const int32_t China[] = {
+static const int32_t China[] = {
 	8718750,		4938240,
 	7163090,		3694990,
 	8375980,		2814950,
@@ -52,7 +52,7 @@ const int32_t China[] = {
 	8718750,		4938240
 	};
 
-const int32_t CostNicPan[] = {
+static const int32_t CostNicPan[] = {
 	-8876950,		1199630,
 	-8020020,		480640,
 	-7661870,		942740,
@@ -60,7 +60,7 @@ const int32_t CostNicPan[] = {
 	-8876950,		1199630
 	};
 	
-const int32_t France[] = {
+static const int32_t France[] = {
 	795410,			4876340,
 	191160,			5094460,
 	-364750,		4829780,
@@ -71,7 +71,7 @@ const int32_t France[] = {
 	795410,			4876340
 	};
 	
-const int32_t Japan[] = {
+static const int32_t Japan[] = {
 	13917480,		4582880,
 	15209470,		4585940,
 	14422850,		2340280,
@@ -79,7 +79,7 @@ const int32_t Japan[] = {
 	13917480,		4582880
 	};
 
-const int32_t Latvia[] = {
+static const int32_t Latvia[] = {
 	2664180,		5568380,
 	2817990,		5620670,
 	2778440,		5733250,
@@ -92,7 +92,7 @@ const int32_t Latvia[] = {
 	2664180,		5568380
 	};
 	
-const int32_t New_Zealand[] = {
+static const int32_t New_Zealand[] = {
 	17999990,		-3778810,
 	17999990,		-5522580,
 	15433590,		-4582880,
@@ -100,7 +100,7 @@ const int32_t New_Zealand[] = {
 	17999990,		-3778810
 	};
 
-const int32_t Romania[] = {
+static const int32_t Romania[] = {
 	2712520,		4795310,
 	2295040,		4797520,
 	2063230,		4585940,
@@ -109,14 +109,14 @@ const int32_t Romania[] = {
 	2712520,		4795310
 	};
 
-const int32_t South_Korea[] = {
+static const int32_t South_Korea[] = {
 	13493410,		4101310,
 	12410160,		3880550,
 	12552980,		2849770,
 	13493410,		4101310
 	};
 
-const int32_t Thailand[] = {
+static const int32_t Thailand[] = {
 	10579830,		1437080,
 	10248050,		1409400,
 	10252440,		607500,
@@ -126,7 +126,7 @@ const int32_t Thailand[] = {
 	10579830,		1437080
 	};
 
-const int32_t UK[] = {
+static const int32_t UK[] = {
 	-65920,			6097310,
 	-758060,		5807790,
 	-821780,		5423960,
@@ -138,7 +138,7 @@ const int32_t UK[] = {
 	-65920,			6097310
 	};
 
-const int32_t Venezuela[] = {
+static const int32_t Venezuela[] = {
 	-6665410,		18680,
 	-6099610,		541910,
 	-5952390,		938400,
@@ -149,7 +149,7 @@ const int32_t Venezuela[] = {
 	};
 	
 
-const float ArgParUruF[] = {
+static const float ArgParUruF[] = {
 	-57.79910,		-18.67750,
 	-53.48140,		-26.66710,
 	-57.13990,		-29.77390,
@@ -160,7 +160,7 @@ const float ArgParUruF[] = {
 	-57.79910,		-18.67750
 };
 
-const float AustraliaF[] = {
+static const float AustraliaF[] = {
 	147.56840,		-46.92030,
 	166.02540,		-29.15220,
 	144.14060,		-9.18890,
@@ -169,7 +169,7 @@ const float AustraliaF[] = {
 	147.56840,		-46.92030
 };
 
-const float BrazilF[] = {
+static const float BrazilF[] = {
 	-57.04100,		-29.76440,
 	-49.65820,		-34.45220,
 	-28.30080,		-5.87830,
@@ -181,7 +181,7 @@ const float BrazilF[] = {
 	-57.04100,		-29.76440
 };
 
-const float ChinaF[] = {
+static const float ChinaF[] = {
 	87.18750,		49.38240,
 	71.63090,		36.94990,
 	83.75980,		28.14950,
@@ -194,7 +194,7 @@ const float ChinaF[] = {
 	87.18750,		49.38240
 };
 
-const float CostNicPanF[] = {
+static const float CostNicPanF[] = {
 	-88.76950,		11.99630,
 	-80.20020,		4.80640,
 	-76.61870,		9.42740,
@@ -202,7 +202,7 @@ const float CostNicPanF[] = {
 	-88.76950,		11.99630
 };
 
-const float FranceF[] = {
+static const float FranceF[] = {
 	7.95410,		48.76340,
 	1.91160,		50.94460,
 	-3.64750,		48.29780,
@@ -213,7 +213,7 @@ const float FranceF[] = {
 	7.95410,		48.76340
 };
 
-const float JapanF[] = {
+static const float JapanF[] = {
 	139.17480,		45.82880,
 	152.09470,		45.85940,
 	144.22850,		23.40280,
@@ -221,7 +221,7 @@ const float JapanF[] = {
 	139.17480,		45.82880
 };
 
-const float LatviaF[] = {
+static const float LatviaF[] = {
 	26.64180,		55.68380,
 	28.17990,		56.20670,
 	27.78440,		57.33250,
@@ -234,7 +234,7 @@ const float LatviaF[] = {
 	26.64180,		55.68380
 };
 
-const float New_ZealandF[] = {
+static const float New_ZealandF[] = {
 	179.99990,		-37.78810,
 	179.99990,		-55.22580,
 	154.33590,		-45.82880,
@@ -242,7 +242,7 @@ const float New_ZealandF[] = {
 	179.99990,		-37.78810
 };
 
-const float RomaniaF[] = {
+static const float RomaniaF[] = {
 	27.12520,		47.95310,
 	22.95040,		47.97520,
 	20.63230,		45.85940,
@@ -251,14 +251,14 @@ const float RomaniaF[] = {
 	27.12520,		47.95310
 };
 
-const float South_KoreaF[] = {
+static const float South_KoreaF[] = {
 	134.93410,		41.01310,
 	124.10160,		38.80550,
 	125.52980,		28.49770,
 	134.93410,		41.01310
 };
 
-const float ThailandF[] = {
+static const float ThailandF[] = {
 	105.79830,		14.37080,
 	102.48050,		14.09400,
 	102.52440,		6.07500,
@@ -268,7 +268,7 @@ const float ThailandF[] = {
 	105.79830,		14.37080
 };
 
-const float UKF[] = {
+static const float UKF[] = {
 	-0.65920,		60.97310,
 	-7.58060,		58.07790,
 	-8.21780,		54.23960,
@@ -280,7 +280,7 @@ const float UKF[] = {
 	-0.65920,		60.97310
 };
 
-const float VenezuelaF[] = {
+static const float VenezuelaF[] = {
 	-66.65410,		0.18680,
 	-60.99610,		5.41910,
 	-59.52390,		9.38400,
