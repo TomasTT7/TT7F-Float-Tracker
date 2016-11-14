@@ -5,13 +5,16 @@
  *  Author: Tomy2
  */ 
 
-#include <asf.h>
+#include "sam.h"
 #include "ARM_EEFC.h"
 
 
 /*
 	 FRDY	Ready Interrupt Enable		
 	 FWS	Flash Wait State							Number of cycles for Read/Write operations = FWS+1.
+														0:		1 cycle			25 (max. frequency MHz)
+														1:		2 cycles		44 (max. frequency MHz)
+														2:		3 cycles		64 (max. frequency MHz)
 	 SCOD	Sequential Code Optimization Disable		0: The sequential code optimization is enabled.
 														1: The sequential code optimization is disabled.
 														(No Flash read should be done during change of this register.)

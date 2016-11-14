@@ -6,7 +6,7 @@
  */ 
 
 
-#include <asf.h>
+#include "sam.h"
 #include "ARM_WATCHDOG.h"
 
 
