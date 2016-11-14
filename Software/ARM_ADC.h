@@ -11,7 +11,7 @@ TT7F SPECIFIC CALCULATIONS
 #include "stdint.h"
 
 
-#define TEMP_OFFSET 13.0		// right after first startup it measured 15°C in a ~21°C room
+#define TEMP_OFFSET 10.0		// right after first startup it measured 15°C in a ~21°C room
 
 
 // Functions
