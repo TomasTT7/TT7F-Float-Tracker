@@ -271,13 +271,15 @@ void PS_enter_Sleep_Mode(uint8_t type, uint8_t rtt, uint8_t rtc)
 	12.3	20.0	uA
 
 */
-void PS_enter_Wait_Mode(uint8_t rtt, uint8_t rtc)
+void PS_enter_Wait_Mode(uint8_t rtt, uint8_t rtc, uint8_t wkup12)
 {
 	uint32_t i;
 	
 	PMC->PMC_FSMR = (0x01u << 20);				// LPM 1 - the WaitForEvent (WFE) instruction of the processor makes the system to enter in Wait Mode
 	if(rtt) PMC->PMC_FSMR |= (0x01u << 16);		// the RTT alarm enables a fast restart signal to the Power Management Controller
 	if(rtc) PMC->PMC_FSMR |= (0x01u << 17);		// the RTC alarm enables a fast restart signal to the Power Management Controller
+	if(wkup12) PMC->PMC_FSMR |= (0x01u << 12);	// the corresponding wake up input enables a fast restart signal to the Power Management Controller
+	if(wkup12) PMC->PMC_FSPR &= ~(0x01u << 12);	// Defines the active polarity of the corresponding wake up input.
 	SCB->SCR &= (uint32_t)~(0x01u << 2);		// SLEEPDEEP 0 - controls whether the processor uses sleep or deep sleep as its low power mode
 	
 	__WFE();

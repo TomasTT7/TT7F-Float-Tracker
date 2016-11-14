@@ -66,7 +66,7 @@ void PS_switch_FastRC_to_SLCK(void);
 void PS_Brownout_Detector_enable(void);
 void PS_Brownout_Detector_disable(void);
 void PS_enter_Sleep_Mode(uint8_t type, uint8_t rtt, uint8_t rtc);		// type 0 WFI, type 1 WFE, RTT or RTC alarm
-void PS_enter_Wait_Mode(uint8_t rtt, uint8_t rtc);						// enable RTT or RTC alarm as a wakeup source
+void PS_enter_Wait_Mode(uint8_t rtt, uint8_t rtc, uint8_t wkup12);		// enable RTT, RTC or WKUP12 as a wakeup source
 void PS_enter_Backup_Mode(uint8_t rtt, uint8_t rtc);					// enable RTT or RTC alarm as a wakeup source
 void PS_disable_peripheral_clocks(uint8_t rtc, uint8_t rtt, uint8_t uart0, uint8_t uart1, uint8_t pioa, uint8_t piob,
 									uint8_t twi0, uint8_t twi1, uint8_t spi, uint8_t tc0, uint8_t adc, uint8_t pwm);
