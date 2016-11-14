@@ -58,21 +58,25 @@ void UART1_init(void)
 
 
 /*
-
+	
 */
 void UART0_deinit(void)
 {
 	while(!(UART0->UART_SR & UART_SR_TXEMPTY));			// wait for the end of transmission
+	NVIC_DisableIRQ(UART0_IRQn);
+	UART0->UART_CR = UART_CR_RXDIS | UART_CR_TXDIS;		// disable RX and TX
 	PMC->PMC_PCDR0 |= (1 << ID_UART0);					// disable clock for UART0
 }
 
 
 /*
-
+	
 */
 void UART1_deinit(void)
 {
 	while(!(UART1->UART_SR & UART_SR_TXEMPTY));			// wait for the end of transmission
+	NVIC_DisableIRQ(UART1_IRQn);
+	UART1->UART_CR = UART_CR_RXDIS | UART_CR_TXDIS;		// disable RX and TX
 	PMC->PMC_PCDR0 |= (1 << ID_UART1);					// disable clock for UART1
 }
 
@@ -120,7 +124,6 @@ uint8_t UART1_RX(void)
 /*
 
 */
-/*
 void UART0_Handler(void)
 {
 	if(UART0_buffer_pointer < UART0_BUFFER_SIZE)
@@ -131,7 +134,7 @@ void UART0_Handler(void)
 		UART0_temp = UART0->UART_RHR;
 	}
 }
-*/
+
 
 /*
 
