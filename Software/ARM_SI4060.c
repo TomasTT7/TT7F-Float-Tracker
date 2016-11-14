@@ -44,7 +44,7 @@ void SI4060_CTS_check_and_read(uint8_t response_length)
 		{
 			if(response_length > 1)
 			{
-				for(uint8_t i = 1; i < (response_length - 1); i++)
+				for(uint8_t i = 1; i < response_length; i++)
 				{
 					SI4060_buffer[i] = SPI_write(0x00, 0);
 				}
@@ -113,20 +113,26 @@ void SI4060_init(void)
 
 
 /*
-	When shutting Si4060 down by using SDN pin, it consumes 7mA more than leaving SDN low (for some reason).
-	Pulling pins up when shutting Si4060 down decreases consumption a little (omitting whichever pin doesn't influence consumption critically).
+	Reset via SDN pin required to bring the transmitter to its original state (least consumption).
 */
 void SI4060_deinit(void)
 {
 	SI4060_change_state(1);						// Sleep/Standby
 	
+	// de-init GPIO1 - PB4
+	PIOB->PIO_ODR |= PIO_PB4;					// disable Output on PB4
+	PIOB->PIO_PUER |= PIO_PB4;					// enable pull-up
+	
+	// de-init SDN - PA7
+	PIOA->PIO_SODR |= PIO_PA7;					// Set Output Data Register
+	SysTick_delay_ms(1);
+	PIOA->PIO_CODR |= PIO_PA7;					// Clear Output Data Register
+	PIOA->PIO_ODR |= PIO_PA7;					// disable Output on PA7
+	
 	// disable TCXO - PA8
 	PIOA->PIO_CODR |= PIO_PA8;					// Clear Output Data Register
-	
-	// enable pull-ups on pins used by SI4060
-	PIOA->PIO_PUER |= PIO_PA8;					// TCXO
-	PIOB->PIO_PUER |= PIO_PB4;					// GPIO1
-	PIOA->PIO_PUER |= PIO_PA7;					// SDN
+	PIOA->PIO_ODR |= PIO_PA8;					// disable Output on PA8
+	PIOA->PIO_PUER |= PIO_PA8;					// enable pull-up
 }
 
 
@@ -442,6 +448,27 @@ void SI4060_info(void)
 	SPI_write(0x01, 0);							// PART_INFO
 	SPI_write(0x00, 1);							// for some reason one byte commands need to be executed this way
 	SI4060_CTS_check_and_read(9);
+}
+
+
+/*
+	Reads the Si4060's temperature sensor.
+	The conversion rate is between 300 Hz to 2.44 kHz.
+	
+	Temp (°C) = TEMP_ADC[15:0] x 568 / 2560 - 297
+*/
+uint16_t SI4060_get_temperature(void)
+{
+	uint16_t data = 0;
+	
+	SPI_write(0x14, 0);							// GET_ADC_READING
+	SPI_write(0b00010000, 0);					// TEMPERATURE_EN
+	SPI_write(0xC0, 1);							// ADC rate of conversion 325Hz
+	SI4060_CTS_check_and_read(7);
+	
+	data = (SI4060_buffer[5] << 8) | (SI4060_buffer[6] << 0);
+	
+	return data;
 }
 
 
