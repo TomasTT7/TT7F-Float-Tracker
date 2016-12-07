@@ -7,7 +7,7 @@
 
 #define SSID 11											// APRS source address SSID
 #define DSSID 0											// APRS destination address SSID
-#define APRSFLAGS 20									// number of 0x7E FLAGS in the beginning of the APRS message
+#define APRSFLAGS 12									// number of 0x7E FLAGS in the beginning of the APRS message
 #define APRS_BUFFER_SIZE 350
 
 
