@@ -21,27 +21,28 @@ SI4060 AND SAM3S8 WIRING
 #define TCXO				32000000UL
 #define FREQUENCY_RTTY		434287000UL
 #define FREQUENCY_APRS		144800000UL
-#define FREQ_OFFSET			3200						// Hz to subtract from FREQUENCY_APRS to center the modulation (APRS with Look Up Table)
+#define FREQ_OFFSET			2985						// Hz to subtract from FREQUENCY_APRS to center the modulation (APRS with Look Up Table)
 
 
 /*
 	MODEM_FREQ_DEV = (2^19 * OUTDIV * deviation_Hz) / (Npresc * TCXO_Hz)
 	
-	434MHz	[OUTDIV 8]		39		1200Hz			33		1000Hz			26	800Hz			16	450Hz
-	144MHz	[OUTDIV 24]		1179	12000Hz			865		8800Hz			432	4400Hz			216	2200Hz			118	1200Hz
+	434MHz	[OUTDIV 8]		39		1200Hz			33		1000Hz			26		800Hz			16	450Hz
+	144MHz	[OUTDIV 24]		1179	12000Hz			983		10000Hz			688		7000Hz			432	4400Hz			216	2200Hz			118	1200Hz
 */
 #define TX_DEVIATION_RTTY	16 
-#define TX_DEVIATION_APRS	1179
+#define TX_DEVIATION_APRS	688
+#define TX_DEVIATION_APRS_1200	324						// manual pre-emphasis
+#define TX_DEVIATION_APRS_2200	589						// manual pre-emphasis
 
 
 /*
-	MAX		13dBm		0x7F	127
-			10dBm		~0x32	~50
-	MIN		-40dBm		0x00	0
-		
-	The relationship is NOT linear.
+				DDAC
+	169MHz		0x23 (35)	10.3dBm		18.4mA
+	434MHz		0x2A (42)	10.3dBm		17.1mA
+	434MHz		0x4F (79)	12.3dBm		23.3mA
 */
-#define POWER_LEVEL			0x7F
+#define POWER_LEVEL			0x2A
 
 
 /*
@@ -90,39 +91,76 @@ SI4060 AND SAM3S8 WIRING
 		GFSK synchronous
 		GFSK asynchronous
 		LOOKUP
+		
+								TC_CMRx
+	TIMER_CLOCK1	MCK/2		0
+	TIMER_CLOCK2	MCK/8		1
+	TIMER_CLOCK3	MCK/32		2
+	TIMER_CLOCK4	MCK/128		3
+	TIMER_CLOCK5	SLCK		4
 	
 	64MHz PLL		TIMER_CLOCK2 (0x01)		COMPARE_VALUE: 6667		1200Hz
-	64MHz PLL		TIMER_CLOCK2 (0x01)		COMPARE_VALUE: 3333		2400Hz
-	64MHz PLL		TIMER_CLOCK2 (0x01)		COMPARE_VALUE: 1818		4400Hz
 	64MHz PLL		TIMER_CLOCK2 (0x01)		COMPARE_VALUE: 368		21739Hz
 	64MHz PLL		TIMER_CLOCK2 (0x01)		COMPARE_VALUE: 303		26400Hz
 	
+	16MHz XTAL		TIMER_CLOCK1 (0x00)		COMPARE_VALUE: 6667		1200Hz
+	16MHz XTAL		TIMER_CLOCK1 (0x00)		COMPARE_VALUE: 368		21739Hz
+	16MHz XTAL		TIMER_CLOCK1 (0x00)		COMPARE_VALUE: 303		26400Hz
+	
 	12MHz XTAL		TIMER_CLOCK1 (0x00)		COMPARE_VALUE: 5000		1200Hz
-	12MHz XTAL		TIMER_CLOCK1 (0x00)		COMPARE_VALUE: 2500		2400Hz
-	12MHz XTAL		TIMER_CLOCK1 (0x00)		COMPARE_VALUE: 1364		4400Hz
-	12MHz XTAL		TIMER_CLOCK1 (0x00)		COMPARE_VALUE: 276		21739Hz
+	12MHz XTAL		TIMER_CLOCK1 (0x00)		COMPARE_VALUE: 552		21739Hz -> 10869Hz has to be slower with the the 'tableStep' doubled
 	12MHz XTAL		TIMER_CLOCK1 (0x00)		COMPARE_VALUE: 227		26400Hz
 */
-#define TIMER_CLOCK_GFSK_SYNC_TC0				0x00
-#define COMPARE_VALUE_GFSK_SYNC_TC0				227				// 26400Hz
+#define TIMER_CLOCK_GFSK_SYNC_TC0				0x01
+#define COMPARE_VALUE_GFSK_SYNC_TC0				303				// 26400Hz
 
-#define TIMER_CLOCK_GFSK_ASYNC_TC0				0x01
-#define TIMER_CLOCK_GFSK_ASYNC_TC1				0x01
-#define COMPARE_VALUE_GFSK_ASYNC_TC0			6667			// 
-#define COMPARE_VALUE_GFSK_ASYNC_TC1_1200		3333			// 
-#define COMPARE_VALUE_GFSK_ASYNC_TC1_2200		1818			// 
-
-#define TIMER_CLOCK_LOOKUP_TC0					0x00
-#define TIMER_CLOCK_LOOKUP_TC1					0x00
-#define COMPARE_VALUE_LOOKUP_TC0				5000			// 1200Hz
-#define COMPARE_VALUE_LOOKUP_TC1				276				// 21739Hz
-
+#define TIMER_CLOCK_LOOKUP_TC0					0x01
+#define TIMER_CLOCK_LOOKUP_TC1					0x01
+#define COMPARE_VALUE_LOOKUP_TC0				6667			// 1200Hz
+#define COMPARE_VALUE_LOOKUP_TC1				368				// 21739Hz
 
 #define APRS_BUFFER_SIZE						350
 #define CTS_TIMEOUT								15000			// timeout for a while loop waiting for Si4060 response 
 
 
-#define LOOKUP_TBL_MULTIPLIER					5				// factor to generate desired modulation width
+/*
+	Example:
+		SineLookUp range						1-255
+		LOOKUP_TBL_MULTIPLIER_1200				5				5 * 255 = 1275 * 5.09Hz = 6489Hz (max offset at 144MHz) -> 1200Hz wave width
+		LOOKUP_TBL_MULTIPLIER_2200				8				8 * 255 = 2040 * 5.09Hz = 10383Hz (max offset at 144MHz) -> 2200Hz wave width
+		LOOKUP_TBL_MULTIPLIER_OFFSET			382				(10383Hz - 6489Hz) / 2 = 1947Hz / 5.09Hz = 382 -> 1200Hz wave centered with 2200Hz
+		FREQ_OFFSET								5191			10383Hz / 2 = 5191Hz -> offset to center the modulation on the desired TX frequency
+		
+	LOOKUP_TBL_MULTIPLIER_1200					2.5				tone at 1.65kHz
+	LOOKUP_TBL_MULTIPLIER_2200					4.6				tone at 3.00kHz
+	LOOKUP_TBL_MULTIPLIER_OFFSET				268
+	FREQ_OFFSET									2985			Hz
+	
+	LOOKUP_TBL_MULTIPLIER_1200					3.85			tone at 2.5kHz
+	LOOKUP_TBL_MULTIPLIER_2200					5.40			tone at 3.5kHz
+	LOOKUP_TBL_MULTIPLIER_OFFSET				198
+	FREQ_OFFSET									3504			Hz
+*/
+#define LOOKUP_TBL_MULTIPLIER_1200				2.50			// factor to generate desired modulation width (multiplies the SineLookUp)
+#define LOOKUP_TBL_MULTIPLIER_2200				4.60			// factor to generate desired modulation width (multiplies the SineLookUp)
+#define LOOKUP_TBL_MULTIPLIER_OFFSET			268				// value to offset the 1200Hz tone to be centered with the wider 2200Hz tone
+static float lookup_tbl_multiplier = LOOKUP_TBL_MULTIPLIER_1200;
+
+
+/*
+	12MHz XTAL			1200Hz sine wave		28
+						2200Hz sine wave		52
+	16MHz XTAL			1200Hz sine wave		28
+						2200Hz sine wave		52
+	64MHz PLL			1200Hz sine wave		14
+						2200Hz sine wave		26
+						
+	When running at 12MHz, the MCU doesn't seem to keep up with the 21739Hz timer speed required. The speed is halved to 10869Hz
+	and the steps through the SineLookUp table doubled.
+*/
+#define LOOKUP_TBL_STEP_1200					14
+#define LOOKUP_TBL_STEP_2200					26
+
 
 /*
 	Lookup table for APRS sine wave. Values are used as offset to the base frequency programmed in Si4060.
@@ -148,7 +186,7 @@ extern volatile uint32_t SI4060_buffer[16];							// buffer for SI4060 response
 	
 	RTTY_INTERRUPT		0
 	GFSK_SYNC			1
-	GFSK_ASYNC			2
+	-					2
 	LOOKUP				3
 */
 extern volatile uint8_t TC_rtty_gfsk_lookup;
@@ -206,13 +244,12 @@ void SI4060_data_rate(uint32_t data_rate);
 void SI4060_change_state(uint8_t state);
 void SI4060_start_TX(uint8_t channel);
 void SI4060_info(void);
+void SI4060_PA_mode(uint8_t pa_sel, uint8_t pa_mode);
 uint16_t SI4060_get_temperature(void);
 
 void TC0_init_RTTY_NORMAL(void);
 void TC0_init_RTTY_INTERRUPT(void);
 void TC0_init_APRS_GFSK_sync(void);
-void TC0_init_APRS_GFSK_async(void);
-void TC1_init_APRS_GFSK_async(void);
 void TC0_init_APRS_lookup(void);
 void TC1_init_APRS_lookup(void);
 void TC0_Handler(void);
@@ -226,7 +263,6 @@ void SI4060_tx_RTTY_string_DELAY(uint8_t *string);
 void SI4060_tx_RTTY_string_TC0(uint8_t *string);
 void SI4060_tx_APRS_GFSK_sync(void);
 void SI4060_tx_APRS_GFSK_sync_BITS(uint8_t * buffer, uint32_t startFlagsEnd, uint32_t endFlagsStart);
-void SI4060_tx_APRS_GFSK_async(void);
 void SI4060_tx_APRS_look_up(void);
 void SI4060_tx_APRS_look_up_BITS(uint8_t * buffer, uint32_t startFlagsEnd, uint32_t endFlagsStart);
 

@@ -154,7 +154,7 @@ void SI4060_setup_pins(uint8_t gpio0, uint8_t gpio1, uint8_t gpio2, uint8_t gpio
 
 
 /*
-
+	Calculation from setFrequency() as in pAVAR9 tracker by Upu.
 */
 void SI4060_frequency(uint32_t freq)
 {
@@ -180,7 +180,7 @@ void SI4060_frequency(uint32_t freq)
 	SPI_write(0x20, 0);							// MODEM (group)
 	SPI_write(0x01, 0);							// 1 (num_props)
 	SPI_write(0x51, 0);							// MODEM_CLKGEN_BAND (start_prop)
-	SPI_write(0b1000 + band, 1);				// (data)
+	SPI_write(0b1000 + band, 1);				// (data) SY_SEL = Div-by-2
 	SI4060_CTS_check_and_read(0);
 	
 	SPI_write(0x11, 0);							// SET_PROPERTY (cmd)
@@ -249,6 +249,11 @@ void SI4060_frequency_deviation(uint32_t deviation)
 /*
 	Value is used to provide an offset to the programmed TX frequency. This allows fine tuning of the TX frequency to account
 	for the variability of the TX reference frequency
+	
+	MODEM_FREQ_OFFSET = (2^19 * OUTDIV * desired_offset_Hz) / (Npresc * TCXO_Hz)
+	
+	minimum offset		5.09Hz (144MHz)
+						15.26Hz (434MHz)
 */
 void SI4060_frequency_offset(uint32_t offset)
 {
@@ -302,17 +307,17 @@ void SI4060_modulation(uint8_t mod, uint8_t syncasync)
 
 
 /*
-	Range:	0x00 (0)	0x61 (97)	0x7F (127)
-			-40dBm		10dBm		13dBm
-	
-	Step Size:	~0.1dB
-	
 			Max Output Power	TX Current
 	Si4060	+13dBm				+10dBm: 18mA (at 868MHz)
 								+13dBm: 25mA (measured at 434MHz)
 	Si4063	+20dBm				+20dBm: 70mA (at 169MHz)
 								+20dBm: 75mA (at 460MHz)
 								+20dBm: 85mA (at 915MHz)
+	
+				DDAC
+	169MHz		0x23 (35)	10.3dBm		18.4mA
+	434MHz		0x2A (42)	10.3dBm		17.1mA
+	434MHz		0x4F (79)	12.3dBm		23.3mA
 */
 void SI4060_power_level(uint8_t val)
 {
@@ -341,12 +346,15 @@ void SI4060_power_level(uint8_t val)
 	uint8_t filter[9] = {0xd9,0xf1,0x0c,0x29,0x44,0x5d,0x70,0x7c,0x7f};			// UTRAK - LP only, 4800 Hz
 	uint8_t filter[9] = {0xd5,0xe9,0x03,0x20,0x3d,0x58,0x6d,0x7a,0x7f};			// UTRAK - LP only, 4400 Hz
 	uint8_t filter[9] = {0x19,0x21,0x07,0xC8,0x8E,0x9A,0xFB,0x75,0xAD};			// UBSEDS (FIR python)
+	uint8_t filter[9] = {4, 8, 0, 233, 219, 254, 95, 208, 258};					// UBSEDS (FIR python) Low-Pass
 	uint8_t filter[9] = {7, 10, 2, 238, 218, 222, 255, 40, 59};					// MY FILTER (FIR python) - no pre-emphasis
 	uint8_t filter[9] = {6, 10, 6, 244, 224, 224, 251, 32, 50};					// MY FILTER (FIR python) - 6.14dB ripple
+	uint8_t filter[9] = {253, 24, 24, 216, 109, 83, 224, 195, 307};				// MY FILTER (FIR python) - 16000Hz-900Hz-3025Hz
+	uint8_t filter[9] = {0xE4,0xC8,0xAD,0xA7,0xC4,0x01,0x4F,0x90,0xAA};			// MY FILTER (FIR python) - experimental
 */
 void SI4060_filter_coeffs(void)
 {
-	uint8_t filter[9] = {6, 10, 6, 244, 224, 224, 251, 32, 50};					// MY FILTER (FIR python) - 6.14dB ripple
+	uint8_t filter[9] = {0x19,0x21,0x07,0xC8,0x8E,0x9A,0xFB,0x75,0xAD};			// UBSEDS (FIR python)
 	
 	SPI_write(0x11, 0);															// SET_PROPERTY (cmd)
 	SPI_write(0x20, 0);															// MODEM (group)
@@ -385,7 +393,7 @@ void SI4060_data_rate(uint32_t data_rate)
 	SPI_write(0x20, 0);							// MODEM (group)
 	SPI_write(0x04, 0);							// 4 (num_props)
 	SPI_write(0x06, 0);							// MODEM_TX_NCO_MODE (start_prop), Gaussian filter oversampling ratio derived from TCXO's frequency
-	SPI_write(0x01, 0);							// (data) - MODEM_TX_NCO_MODE - TX Gaussian filter oversampling ratio is 10x.
+	SPI_write(0x01, 0);							// (data) - MODEM_TX_NCO_MODE - TX Gaussian filter oversampling ratio: 10x (0x01), 20x (0x09), 40x (0x05).
 	SPI_write(0xE8, 0);							// (data) - MODEM_TX_NCO_MODE
 	SPI_write(0x48, 0);							// (data) - MODEM_TX_NCO_MODE
 	SPI_write(0x00, 1);							// (data) - MODEM_TX_NCO_MODE - 32000000
@@ -448,6 +456,29 @@ void SI4060_info(void)
 	SPI_write(0x01, 0);							// PART_INFO
 	SPI_write(0x00, 1);							// for some reason one byte commands need to be executed this way
 	SI4060_CTS_check_and_read(9);
+}
+
+
+/*
+	This configuration is automatically handled inside the chip according to chip type.
+	The PA_SEL field does not need to be configured to obtain proper operation of the PA.
+	
+		PA_SEL		HP_FINE		1 	Si4463/64: lower maximum power but with finer step size (~2x).
+					HP_COARSE 	2 	Si4463/64: higher maximum power but with larger step size.
+					LP		 	6 	Si4460: lower-power applications.
+					MP		 	8 	Si4461: medium-power applications.
+		
+		PA_MODE		CLE 		0 	Switching-Amplifier Mode (for Class-E or Square Wave match).
+					SWC 		1 	Switched Current Mode.
+*/
+void SI4060_PA_mode(uint8_t pa_sel, uint8_t pa_mode)
+{
+	SPI_write(0x11, 0);								// SET_PROPERTY (cmd)
+	SPI_write(0x22, 0);								// PA (group)
+	SPI_write(0x01, 0);								// 1 (num_props)
+	SPI_write(0x00, 0);								// PA_MODE (start_prop)
+	SPI_write((pa_sel << 2) | (pa_mode << 0), 1);	// (data) - PA_MODE
+	SI4060_CTS_check_and_read(0);
 }
 
 
@@ -532,53 +563,11 @@ void TC0_init_APRS_GFSK_sync(void)
 
 /*
 	Set to 1200Hz to signal the next bit.
-*/
-void TC0_init_APRS_GFSK_async(void)
-{
-	// disable and clear any pending interrupt input before configuring it
-	NVIC_DisableIRQ(TC0_IRQn);
-	NVIC_ClearPendingIRQ(TC0_IRQn);
-	NVIC_SetPriority(TC0_IRQn, 0);
-	
-	PMC->PMC_PCER0 |= (1 << ID_TC0);												// enable clock to the peripheral
-	TC0->TC_CHANNEL[0].TC_CMR = (0x01 << 14) | (TIMER_CLOCK_GFSK_ASYNC_TC0 << 0);	// CPCTRG, TIMER_CLOCK
-	TC0->TC_CHANNEL[0].TC_RC = COMPARE_VALUE_GFSK_ASYNC_TC0;						// compare value
-	TC0->TC_CHANNEL[0].TC_IER = (1 << 4);											// CPCS enable RC Compare interrupt
-	TC0->TC_CHANNEL[0].TC_CCR = TC_CCR_CLKEN | TC_CCR_SWTRG;						// enable the clock
-	
-	// enable interrupt input (system exceptions/interrupts don't use NVIC)
-	NVIC_EnableIRQ(TC0_IRQn);
-}
-
-
-/*
-	Set to either 2400Hz (for 1200Hz tone) or 4400Hz (for 2200Hz tone) to generate the sine waves.
 	
 	Naming of individual Timer Counter channels is somewhat confusing.
 	
 	ID_TC0	TC0_IRQn	TC0_Handler		located on:	TC0
 	ID_TC1	TC1_IRQn	TC1_Handler		located on:	TC0
-*/
-void TC1_init_APRS_GFSK_async(void)
-{
-	// disable and clear any pending interrupt input before configuring it
-	NVIC_DisableIRQ(TC1_IRQn);
-	NVIC_ClearPendingIRQ(TC1_IRQn);
-	NVIC_SetPriority(TC1_IRQn, 0);
-	
-	PMC->PMC_PCER0 |= (1 << ID_TC1);												// enable clock to the peripheral
-	TC0->TC_CHANNEL[1].TC_CMR = (0x01 << 14) | (TIMER_CLOCK_GFSK_ASYNC_TC1 << 0);	// CPCTRG, TIMER_CLOCK
-	TC0->TC_CHANNEL[1].TC_RC = COMPARE_VALUE_GFSK_ASYNC_TC1_1200;					// compare value
-	TC0->TC_CHANNEL[1].TC_IER = (1 << 4);											// CPCS enable RC Compare interrupt
-	TC0->TC_CHANNEL[1].TC_CCR = TC_CCR_CLKEN | TC_CCR_SWTRG;						// enable the clock
-	
-	// enable interrupt input (system exceptions/interrupts don't use NVIC)
-	NVIC_EnableIRQ(TC1_IRQn);
-}
-
-
-/*
-	Set to 1200Hz to signal the next bit.
 */
 void TC0_init_APRS_lookup(void)
 {
@@ -600,6 +589,7 @@ void TC0_init_APRS_lookup(void)
 
 /*
 	Set to 21739Hz to go through the lookup table.
+	Set to 10869Hz when running on 12MHz XTAL.
 */
 void TC1_init_APRS_lookup(void)
 {
@@ -629,14 +619,10 @@ void TC1_init_APRS_lookup(void)
 		Slow Sine Wave	1200Hz		(1 full wave length per Baud) -> every 11 interrupts change of HIGH/LOW on PB4 to create a half of the full wave
 		Fast Sine Wave	2200Hz		(1.83 wave length per Baud) -> every 6 interrupts change of HIGH/LOW on PB4 to create a half of the full wave
 	
-	GFSK_ASYNC
-		TC0				1200Hz		Baud Rate
-		TC1				2400Hz		1200Hz Sine Wave
-		TC1				4400Hz		2200Hz Sine Wave
-		
 	LOOKUP
 		TC0				1200Hz		Baud Rate
 		TC1				21739Hz		As fast as Si4060 manages to apply modified frequency offset.
+						10869Hz		In case of running on 12MHz XTAL.
 */
 void TC0_Handler(void)
 {
@@ -739,13 +725,6 @@ void TC0_Handler(void)
 	}
 	
 	
-	// GFSK_ASYNC ---------------------------------------------------------------------------------------------------------------------------
-	else if(TC_rtty_gfsk_lookup == 2)
-	{
-		APRS_bit = 1;
-	}
-	
-	
 	// LOOKUP -------------------------------------------------------------------------------------------------------------------------------
 	else if(TC_rtty_gfsk_lookup == 3)
 	{
@@ -773,14 +752,6 @@ void TC1_Handler(void)
 	else if(TC_rtty_gfsk_lookup == 1)
 	{
 		
-	}
-	
-	
-	// GFSK_ASYNC ---------------------------------------------------------------------------------------------------------------------------
-	else if(TC_rtty_gfsk_lookup == 2)
-	{
-		if(PIOB->PIO_ODSR && PIO_PB4) PIOB->PIO_CODR |= PIO_PB4;						// Clear Output Data Register - Si4060's GPIO1
-		else PIOB->PIO_SODR |= PIO_PB4;													// Set Output Data Register - Si4060's GPIO1
 	}
 	
 	
@@ -953,10 +924,10 @@ void SI4060_tx_RTTY_string_TC0(uint8_t *string)
 void SI4060_tx_APRS_GFSK_sync(void)
 {
 	SI4060_modulation(3, 0);										// GFSK, synchronous
-	SI4060_data_rate(0x002EE0);										// 12000 for 1200Hz sine wave and 22000 for 2200Hz sine wave
+	SI4060_data_rate(0x2EE0);										// 12000 for 1200Hz sine wave and 22000 for 2200Hz sine wave (0x2EE0)
 	SI4060_filter_coeffs();											// set up the FIR filter
 	SI4060_frequency(APRS_tx_frequency);
-	SI4060_frequency_deviation(TX_DEVIATION_APRS);
+	SI4060_frequency_deviation(TX_DEVIATION_APRS_1200);
 	SI4060_power_level(POWER_LEVEL);
 	SI4060_change_state(0x07);
 	
@@ -989,10 +960,11 @@ void SI4060_tx_APRS_GFSK_sync(void)
 			SPI_write(0x20, 0);										// MODEM (group)
 			SPI_write(0x03, 0);										// 3 (num_props)
 			SPI_write(0x03, 0);										// MODEM_DATA_RATE (start_prop)
-			SPI_write(0x00, 0);										// (data) - MODEM_DATA_RATE
-			SPI_write(0x55, 0);										// (data) - MODEM_DATA_RATE 0x55 (with custom FIR)
-			SPI_write(0xF0, 1);										// (data) - MODEM_DATA_RATE 0xF0 (with custom FIR) - 22000
+			SPI_write(0x00, 0);										// (data) - MODEM_DATA_RATE								0x01 (88000)
+			SPI_write(0x55, 0);										// (data) - MODEM_DATA_RATE 0x55 (22000), 0xAB (44000), 0x57 (88000)
+			SPI_write(0xF0, 1);										// (data) - MODEM_DATA_RATE 0xF0 (22000), 0xE0 (44000), 0xC0 (88000)
 			SI4060_CTS_check_and_read(0);
+			SI4060_frequency_deviation(TX_DEVIATION_APRS_2200);		// manual pre-emphasis
 			
 			SineWaveFast = 0;
 		}
@@ -1005,9 +977,10 @@ void SI4060_tx_APRS_GFSK_sync(void)
 			SPI_write(0x03, 0);										// 3 (num_props)
 			SPI_write(0x03, 0);										// MODEM_DATA_RATE (start_prop)
 			SPI_write(0x00, 0);										// (data) - MODEM_DATA_RATE
-			SPI_write(0x2E, 0);										// (data) - MODEM_DATA_RATE 0x2E (with custom FIR)
-			SPI_write(0xE0, 1);										// (data) - MODEM_DATA_RATE 0xE0 (with custom FIR) - 12000
+			SPI_write(0x2E, 0);										// (data) - MODEM_DATA_RATE 0x2E (12000), 0x5D (24000), 0xBB (48000)
+			SPI_write(0xE0, 1);										// (data) - MODEM_DATA_RATE 0xE0 (12000), 0xC0 (24000), 0x80 (48000)
 			SI4060_CTS_check_and_read(0);	
+			SI4060_frequency_deviation(TX_DEVIATION_APRS_1200);		// manual pre-emphasis
 			
 			SineWaveSlow = 0;
 		}
@@ -1130,7 +1103,7 @@ void SI4060_tx_APRS_GFSK_sync_BITS(uint8_t * buffer, uint32_t startFlagsEnd, uin
 	SI4060_data_rate(0x002EE0);										// 12000 for 1200Hz sine wave and 22000 for 2200Hz sine wave
 	SI4060_filter_coeffs();											// set up the FIR filter
 	SI4060_frequency(APRS_tx_frequency);
-	SI4060_frequency_deviation(TX_DEVIATION_APRS);
+	SI4060_frequency_deviation(TX_DEVIATION_APRS_1200);
 	SI4060_power_level(POWER_LEVEL);
 	SI4060_change_state(0x07);
 	
@@ -1159,6 +1132,7 @@ void SI4060_tx_APRS_GFSK_sync_BITS(uint8_t * buffer, uint32_t startFlagsEnd, uin
 			SPI_write(0x55, 0);										// (data) - MODEM_DATA_RATE 0x55 (with custom FIR)
 			SPI_write(0xF0, 1);										// (data) - MODEM_DATA_RATE 0xF0 (with custom FIR) - 22000
 			SI4060_CTS_check_and_read(0);
+			SI4060_frequency_deviation(TX_DEVIATION_APRS_2200);		// manual pre-emphasis
 			
 			SineWaveFast = 0;
 		}
@@ -1174,6 +1148,7 @@ void SI4060_tx_APRS_GFSK_sync_BITS(uint8_t * buffer, uint32_t startFlagsEnd, uin
 			SPI_write(0x2E, 0);										// (data) - MODEM_DATA_RATE 0x2E (with custom FIR)
 			SPI_write(0xE0, 1);										// (data) - MODEM_DATA_RATE 0xE0 (with custom FIR) - 12000
 			SI4060_CTS_check_and_read(0);
+			SI4060_frequency_deviation(TX_DEVIATION_APRS_1200);		// manual pre-emphasis
 			
 			SineWaveSlow = 0;
 		}
@@ -1257,192 +1232,6 @@ void SI4060_tx_APRS_GFSK_sync_BITS(uint8_t * buffer, uint32_t startFlagsEnd, uin
 
 
 /*
-	EXPERIMENTAL. Do NOT use! Doesn't work properly.
-*/
-void SI4060_tx_APRS_GFSK_async(void)
-{
-	SI4060_modulation(3, 0);										// GFSK, synchronous
-	SI4060_data_rate(0x002EE0);										// 12000 for 1200Hz sine wave and 22000 for 2200Hz sine wave
-	SI4060_filter_coeffs();											// set up the FIR filter
-	SI4060_frequency(APRS_tx_frequency);
-	SI4060_frequency_deviation(TX_DEVIATION_APRS);
-	SI4060_power_level(POWER_LEVEL);
-	SI4060_change_state(0x07);
-	
-	TC0_init_APRS_GFSK_async();										// set up the timer to run at 1200Hz - Baud Rate
-	TC1_init_APRS_GFSK_async();										// set up the timer to run at 2400Hz or 4400Hz - Sine Wave
-	
-	APRS_bit = 0;													// flag signaling the time for the next bit operated by the TC0_Handler()
-	GFSKwave = 0;													// current state off the SINE WAVE (0 - 1200Hz, 1 - 2200Hz)
-	uint32_t APRSbyte = 0;											// holds the currently TXed byte's order within APRSpacket[]
-	uint8_t bitStuffCounter = 0;									// counter of successive '1' bits to signal the time to insert the '0' stuffing bit
-	uint8_t bitStuffFlag = 0;										// signals to insert a '0' into the bit stream
-	uint8_t APRSpacketReady = 1;									// flag signaling the end of the packet within APRSpacket[]
-	uint8_t bit = 0;												// counter for bits within one byte of the packet
-	uint8_t dataByte = APRSpacket[APRSbyte];						// holds the currently TXed byte from APRSpacket[]
-	uint8_t APRSstate = 0;											// used to signal that the current byte is an APRS FLAG 0x7E
-	
-	#ifdef BIT_DEBUG												// DEBUG: Used to verify that the packet was constructed properly on the bit level.
-		uint32_t DEBUG_bit_rank = 0;
-		uint8_t DEBUG_bits[1000];
-	#endif															// BIT_DEBUG
-	
-	if(APRSpacket[APRSbyte] == 0x7E) APRSstate = 1;
-	else APRSstate = 0;
-	
-	while(APRSpacketReady)											// handles switching between 1200Hz and 2200Hz sine waves while TXing APRS packet
-	{
-		
-		// NEXT BIT
-		if(APRS_bit)												// moving through APRSpacket[] bit by bit
-		{
-			
-			// BIT STUFFING '0'
-			if(bitStuffFlag)										// insert a '0' after five '1's
-			{
-				
-				if(GFSKwave == 0)									// switch from 1200Hz to 2200Hz
-				{
-					TC0->TC_CHANNEL[1].TC_RC = COMPARE_VALUE_GFSK_ASYNC_TC1_2200;
-					
-					GFSKwave = 1;
-					
-					SPI_write(0x11, 0);								// SET_PROPERTY (CMD)
-					SPI_write(0x20, 0);								// MODEM (group)
-					SPI_write(0x03, 0);								// 3 (num_props)
-					SPI_write(0x03, 0);								// MODEM_DATA_RATE (start_prop)
-					SPI_write(0x00, 0);								// (data) - MODEM_DATA_RATE
-					SPI_write(0x55, 0);								// (data) - MODEM_DATA_RATE 0x55 (with custom FIR)
-					SPI_write(0xF0, 1);								// (data) - MODEM_DATA_RATE 0xF0 (with custom FIR) - 22000
-					SI4060_CTS_check_and_read(0);
-				}
-				else												// switch from 2200Hz to 1200Hz
-				{
-					TC0->TC_CHANNEL[1].TC_RC = COMPARE_VALUE_GFSK_ASYNC_TC1_1200;
-					
-					GFSKwave = 0;
-					
-					SPI_write(0x11, 0);								// SET_PROPERTY (CMD)
-					SPI_write(0x20, 0);								// MODEM (group)
-					SPI_write(0x03, 0);								// 3 (num_props)
-					SPI_write(0x03, 0);								// MODEM_DATA_RATE (start_prop)
-					SPI_write(0x00, 0);								// (data) - MODEM_DATA_RATE
-					SPI_write(0x2E, 0);								// (data) - MODEM_DATA_RATE 0x55 (with custom FIR)
-					SPI_write(0xE0, 1);								// (data) - MODEM_DATA_RATE 0xF0 (with custom FIR) - 12000
-					SI4060_CTS_check_and_read(0);
-				}
-				
-				bitStuffCounter = 0;								// clear the counter
-				bitStuffFlag = 0;									// clear the flag
-				
-				#ifdef BIT_DEBUG
-					DEBUG_bits[DEBUG_bit_rank++] = 0;
-				#endif												// BIT_DEBUG
-				
-			}
-			else
-			{
-			
-				// BIT '1'
-				if(dataByte & 0x01)									// transmit LSB first
-				{
-					// in NRZI encoding '1' leaves the SINE WAVE's speed the same
-					
-					bitStuffCounter++;
-					
-					if(bitStuffCounter == 5 && APRSstate == 0)
-					{
-						bitStuffFlag = 1;							// signal five '1's in a row
-					}
-
-					bit++;											// shift to the next bit
-					dataByte >>= 1;									// shift to the next bit
-					
-					#ifdef BIT_DEBUG
-						DEBUG_bits[DEBUG_bit_rank++] = 1;
-					#endif											// BIT_DEBUG
-				}
-				
-				// BIT '0'
-				else
-				{
-					// in NRZI encoding '0' represents a transition (change in SINE WAVE's speed)
-					
-					if(GFSKwave == 0)								// switch from 1200Hz to 2200Hz
-					{
-						TC0->TC_CHANNEL[1].TC_RC = COMPARE_VALUE_GFSK_ASYNC_TC1_2200;
-					
-						GFSKwave = 1;
-						
-						SPI_write(0x11, 0);							// SET_PROPERTY (CMD)
-						SPI_write(0x20, 0);							// MODEM (group)
-						SPI_write(0x03, 0);							// 3 (num_props)
-						SPI_write(0x03, 0);							// MODEM_DATA_RATE (start_prop)
-						SPI_write(0x00, 0);							// (data) - MODEM_DATA_RATE
-						SPI_write(0x55, 0);							// (data) - MODEM_DATA_RATE 0x55 (with custom FIR)
-						SPI_write(0xF0, 1);							// (data) - MODEM_DATA_RATE 0xF0 (with custom FIR) - 22000
-						SI4060_CTS_check_and_read(0);
-					}
-					else											// switch from 2200Hz to 1200Hz
-					{
-						TC0->TC_CHANNEL[1].TC_RC = COMPARE_VALUE_GFSK_ASYNC_TC1_1200;
-						
-						GFSKwave = 0;
-					
-						SPI_write(0x11, 0);							// SET_PROPERTY (CMD)
-						SPI_write(0x20, 0);							// MODEM (group)
-						SPI_write(0x03, 0);							// 3 (num_props)
-						SPI_write(0x03, 0);							// MODEM_DATA_RATE (start_prop)
-						SPI_write(0x00, 0);							// (data) - MODEM_DATA_RATE
-						SPI_write(0x2E, 0);							// (data) - MODEM_DATA_RATE 0x55 (with custom FIR)
-						SPI_write(0xE0, 1);							// (data) - MODEM_DATA_RATE 0xF0 (with custom FIR) - 12000
-						SI4060_CTS_check_and_read(0);
-					}
-				
-					bitStuffCounter = 0;							// clear the counter
-					bit++;											// shift to the next bit
-					dataByte >>= 1;									// shift to the next bit
-				
-					#ifdef BIT_DEBUG
-						DEBUG_bits[DEBUG_bit_rank++] = 0;
-					#endif											// BIT_DEBUG
-				}
-			}
-			
-			// NEXT BYTE
-			if(bit >= 8)											// signal the end of the current byte and load the next one
-			{
-				bit = 0;
-				APRSbyte++;
-				dataByte = APRSpacket[APRSbyte];
-				
-				if(APRSpacket[APRSbyte] == 0x7E) APRSstate = 1;		// flag
-				else APRSstate = 0;									// normal byte
-			}
-			
-			APRS_bit = 0;											// clear the flag
-		}
-		
-		// END OF THE PACKET
-		if(APRSbyte >= APRS_packet_size) APRSpacketReady = 0;		// signal the end of the packet		
-	}
-
-	TC1_stop();
-	TC0_stop();
-	SI4060_change_state(0x01);										// Sleep/Standby
-	
-	
-	// DEBUG: Used to verify that the packet was on the bit level constructed properly.
-	#ifdef BIT_DEBUG
-	for(uint32_t i = 0; i < DEBUG_bit_rank; i++)
-	{
-		udi_cdc_putc(DEBUG_bits[i]+'0');
-	}
-	#endif															// BIT_DEBUG
-}
-
-
-/*
 	Function to transmit the contents of APRSpacket[] by offsetting a CW based on a lookup table to create 1200Hz and 2200Hz sine waves.
 	Bytes are transmitted LSB first with NRZI encoding (bit '1' leaves the sine wave speed as it is while bit '0' changes it).
 	After every series of five '1' bits there is one extra '0' bit stuffed into the bit stream.
@@ -1469,7 +1258,7 @@ void SI4060_tx_APRS_look_up(void)
 	uint8_t APRSstate = 0;											// used to signal that the current byte is an APRS FLAG 0x7E
 	
 	uint8_t table = 0;
-	uint8_t tableStep = 14;											// 14 - slow (1200Hz), 26 - fast (2200Hz)
+	uint8_t tableStep = LOOKUP_TBL_STEP_1200;						// 14 - slow (1200Hz), 26 - fast (2200Hz)
 	
 	if(APRSpacket[APRSbyte] == 0x7E) APRSstate = 1;
 	else APRSstate = 0;
@@ -1482,8 +1271,8 @@ void SI4060_tx_APRS_look_up(void)
 			// BIT STUFFING '0'
 			if(bitStuffFlag)										// insert a '0' after five '1's
 			{
-				if(tableStep == 14) tableStep = 26;					// change the sine wave to 2200Hz
-				else tableStep = 14;								// change the sine wave to 1200Hz
+				if(tableStep == LOOKUP_TBL_STEP_1200) tableStep = LOOKUP_TBL_STEP_2200;					// change the sine wave to 2200Hz
+				else tableStep = LOOKUP_TBL_STEP_1200;													// change the sine wave to 1200Hz
 				
 				bitStuffCounter = 0;								// clear the counter
 				bitStuffFlag = 0;									// clear the flag
@@ -1512,8 +1301,8 @@ void SI4060_tx_APRS_look_up(void)
 				{
 					// in NRZI encoding '0' represents a transition (change in SINE WAVE's speed)
 				
-					if(tableStep == 14) tableStep = 26;				// change the sine wave to 2200Hz
-					else tableStep = 14;							// change the sine wave to 1200Hz
+					if(tableStep == LOOKUP_TBL_STEP_1200) tableStep = LOOKUP_TBL_STEP_2200;				// change the sine wave to 2200Hz
+					else tableStep = LOOKUP_TBL_STEP_1200;												// change the sine wave to 1200Hz
 								
 					bitStuffCounter = 0;							// clear the counter
 					bit++;											// shift to the next bit
@@ -1537,9 +1326,20 @@ void SI4060_tx_APRS_look_up(void)
 		
 		if(APRS_lookup_wave)										// servicing the Sine Wave formation and speed shifts
 		{
+			uint32_t LookUpOffset = 0;
 			APRS_lookup_wave = 0;
 			table += tableStep;
-			SI4060_frequency_offset(SineLookUp[table] * 5);
+			if(tableStep == LOOKUP_TBL_STEP_2200)
+			{
+				lookup_tbl_multiplier = LOOKUP_TBL_MULTIPLIER_2200;
+				LookUpOffset = 0;
+			} 
+			else
+			{
+				lookup_tbl_multiplier = LOOKUP_TBL_MULTIPLIER_1200;
+				LookUpOffset = LOOKUP_TBL_MULTIPLIER_OFFSET;
+			}
+			SI4060_frequency_offset((uint16_t)((float)SineLookUp[table] * lookup_tbl_multiplier) + LookUpOffset);
 		}
 		
 		if(APRSbyte >= APRS_packet_size) APRSpacketReady = 0;		// signal the end of the packet
@@ -1593,8 +1393,8 @@ void SI4060_tx_APRS_look_up_BITS(uint8_t * buffer, uint32_t startFlagsEnd, uint3
 			
 			if(bitStuffFlag)										// insert a '0' after five '1's
 			{
-				if(tableStep == 14) tableStep = 26;					// change the sine wave to 2200Hz
-				else tableStep = 14;								// change the sine wave to 1200Hz
+				if(tableStep == LOOKUP_TBL_STEP_1200) tableStep = LOOKUP_TBL_STEP_2200;					// change the sine wave to 2200Hz
+				else tableStep = LOOKUP_TBL_STEP_1200;													// change the sine wave to 1200Hz
 				
 				bitStuffCounter = 0;								// clear the counter
 				bitStuffFlag = 0;									// clear the flag
@@ -1632,8 +1432,8 @@ void SI4060_tx_APRS_look_up_BITS(uint8_t * buffer, uint32_t startFlagsEnd, uint3
 				{
 					// in NRZI encoding '0' represents a transition (change in SINE WAVE's speed)
 				
-					if(tableStep == 14) tableStep = 26;				// change the sine wave to 2200Hz
-					else tableStep = 14;							// change the sine wave to 1200Hz
+					if(tableStep == LOOKUP_TBL_STEP_1200) tableStep = LOOKUP_TBL_STEP_2200;				// change the sine wave to 2200Hz
+					else tableStep = LOOKUP_TBL_STEP_1200;												// change the sine wave to 1200Hz
 				
 					bitStuffCounter = 0;							// clear the counter
 					bit = 1;										// shift to the next bit
@@ -1661,10 +1461,20 @@ void SI4060_tx_APRS_look_up_BITS(uint8_t * buffer, uint32_t startFlagsEnd, uint3
 		
 		if(APRS_lookup_wave)										// servicing the Sine Wave formation and speed shifts
 		{
+			uint32_t LookUpOffset = 0;
 			APRS_lookup_wave = 0;
-			
 			table += tableStep;
-			SI4060_frequency_offset(SineLookUp[table] * 5);
+			if(tableStep == LOOKUP_TBL_STEP_2200)
+			{
+				lookup_tbl_multiplier = LOOKUP_TBL_MULTIPLIER_2200;
+				LookUpOffset = 0;
+			}
+			else
+			{
+				lookup_tbl_multiplier = LOOKUP_TBL_MULTIPLIER_1200;
+				LookUpOffset = LOOKUP_TBL_MULTIPLIER_OFFSET;
+			}
+			SI4060_frequency_offset((uint16_t)((float)SineLookUp[table] * lookup_tbl_multiplier) + LookUpOffset);
 		}
 		
 		if(APRSbyte >= APRS_packet_size) APRSpacketReady = 0;		// signal the end of the packet
