@@ -137,7 +137,14 @@ void SI4060_deinit(void)
 
 
 /*
-
+	GENERALLY
+		GPIO0		0x02	disable pull-up, pin is configured as a CMOS output and driven low
+		GPIO1		0x04	disable pull-up, pin is configured as a CMOS input (TXDATA input for TX Direct Mode)
+		GPIO2		0x02	disable pull-up, pin is configured as a CMOS output and driven low
+		GPIO3		0x02	disable pull-up, pin is configured as a CMOS output and driven low
+		NIRQ		0x00	disable pull-up, behavior of this pin is not modified
+		SDO			0x00	disable pull-up, behavior of this pin is not modified
+		GEN_CONFIG	0x00	GPIOs configured as outputs will have the highest drive strength
 */
 void SI4060_setup_pins(uint8_t gpio0, uint8_t gpio1, uint8_t gpio2, uint8_t gpio3, uint8_t nirq, uint8_t sdo)
 {
@@ -227,6 +234,48 @@ void SI4060_frequency_fast(uint32_t freq)
 	SPI_write(m1, 0);							// (data) - FREQ_CONTROL_FRAC
 	SPI_write(m0, 1);							// (data) - FREQ_CONTROL_FRAC
 	SI4060_CTS_check_and_read(0);
+}
+
+
+/*
+	Only Si4463.
+	Should be faster means of switching frequency within the same band.
+	
+	INTE				frequency dependent
+	FRAC				frequency dependent
+	VCO_CNT				0x06C4	hard coded for 144.8MHz operation (external calculator)
+	PLL_SETTLE_TIME		0x32	50us	min
+						0x80	128us	max
+*/
+void SI4463_tx_hop(uint32_t freq, uint16_t pll_settle_time)
+{
+	uint8_t outdiv = 4;
+	if (freq < 705000000UL) outdiv = 6;
+	if (freq < 525000000UL) outdiv = 8;
+	if (freq < 353000000UL) outdiv = 12;
+	if (freq < 239000000UL) outdiv = 16;
+	if (freq < 177000000UL) outdiv = 24;
+	
+	uint32_t f_pfd = 2 * TCXO / outdiv;
+	uint32_t inte = ((uint32_t)(freq / f_pfd)) - 1;
+	float ratio = (float)freq / (float)f_pfd;
+	float rest = ratio - (float)inte;
+	uint32_t frac = (uint32_t)(rest * 524288UL);
+	uint32_t frac2 = frac / 0x10000;
+	uint32_t frac1 = (frac - frac2 * 0x10000) / 0x100;
+	uint32_t frac0 = (frac - frac2 * 0x10000 - frac1 * 0x100);
+	
+	uint32_t vco_cnt = 0x06C4;					// hard coded value for 144.8MHz operation (external calculator required)
+	
+	SPI_write(0x37, 0);							// TX_HOP (cmd)
+	SPI_write(inte, 0);							// INTE
+	SPI_write(frac2, 0);						// FRAC
+	SPI_write(frac1, 0);						// FRAC
+	SPI_write(frac0, 0);						// FRAC
+	SPI_write((vco_cnt >> 8), 0);				// VCO_CNT
+	SPI_write((vco_cnt & 0xFF), 0);				// VCO_CNT
+	SPI_write((pll_settle_time >> 8), 0);		// PLL_SETTLE_TIME
+	SPI_write((pll_settle_time & 0xFF), 1);		// PLL_SETTLE_TIME
 }
 
 
@@ -416,7 +465,9 @@ void SI4060_data_rate(uint32_t data_rate)
 	SPI_ACTIVE	0x02	SPI_ACTIVE state.
 	READY		0x03	READY state.
 	TX_TUNE		0x05	TX_TUNE state.
+	RX_TUNE		0x06	RX_TUNE state. (Si4463)
 	TX			0x07	TX state.
+	RX			0x08	RX state. (Si4463)
 */
 void SI4060_change_state(uint8_t state)
 {
@@ -456,6 +507,23 @@ void SI4060_info(void)
 	SPI_write(0x01, 0);							// PART_INFO
 	SPI_write(0x00, 1);							// for some reason one byte commands need to be executed this way
 	SI4060_CTS_check_and_read(9);
+}
+
+
+/*
+	byte 0 - CTS		0xFF
+	byte 1 - REVEXT		External revision number.
+	byte 2 - REVBRANCH	Branch revision number.
+	byte 3 - REVINT		Internal revision number.
+	byte 4 - PATCH		ID of applied patch.
+	byte 5 - PATCH		0x0000 = No patch applied.
+	byte 6 - FUNC		Current functional mode.
+*/
+void SI4060_func_info(void)
+{
+	SPI_write(0x10, 0);							// FUNC_INFO
+	SPI_write(0x00, 1);							// for some reason one byte commands need to be executed this way
+	SI4060_CTS_check_and_read(7);
 }
 
 
@@ -928,7 +996,7 @@ void SI4060_tx_APRS_GFSK_sync(void)
 	SI4060_filter_coeffs();											// set up the FIR filter
 	SI4060_frequency(APRS_tx_frequency);
 	SI4060_frequency_deviation(TX_DEVIATION_APRS_1200);
-	SI4060_power_level(POWER_LEVEL);
+	SI4060_power_level(SI4060_TX_power);
 	SI4060_change_state(0x07);
 	
 	TC0_init_APRS_GFSK_sync();										// set up the GFSK timer running at 26400Hz
@@ -1104,7 +1172,7 @@ void SI4060_tx_APRS_GFSK_sync_BITS(uint8_t * buffer, uint32_t startFlagsEnd, uin
 	SI4060_filter_coeffs();											// set up the FIR filter
 	SI4060_frequency(APRS_tx_frequency);
 	SI4060_frequency_deviation(TX_DEVIATION_APRS_1200);
-	SI4060_power_level(POWER_LEVEL);
+	SI4060_power_level(SI4060_TX_power);
 	SI4060_change_state(0x07);
 	
 	TC0_init_APRS_GFSK_sync();										// setup the GFSK timer running at 26400Hz
@@ -1241,7 +1309,7 @@ void SI4060_tx_APRS_look_up(void)
 {
 	SI4060_modulation(0, 1);										// uses CW asynchronous modulation
 	SI4060_frequency(APRS_tx_frequency - FREQ_OFFSET);				// FREQ_OFFSET is applied to center the created sine wave on the desired frequency
-	SI4060_power_level(POWER_LEVEL);
+	SI4060_power_level(SI4060_TX_power);
 	SI4060_change_state(0x07);
 	
 	TC0_init_APRS_lookup();											// sets up TC0 at 1200Hz - Baud Rate
@@ -1363,7 +1431,7 @@ void SI4060_tx_APRS_look_up_BITS(uint8_t * buffer, uint32_t startFlagsEnd, uint3
 {
 	SI4060_modulation(0, 1);										// uses CW asynchronous modulation
 	SI4060_frequency(APRS_tx_frequency - FREQ_OFFSET);				// FREQ_OFFSET is applied to center the created sine wave on the desired frequency
-	SI4060_power_level(POWER_LEVEL);
+	SI4060_power_level(SI4060_TX_power);
 	SI4060_change_state(0x07);
 	
 	TC0_init_APRS_lookup();											// sets up TC0 at 1200Hz - Baud Rate
@@ -1510,7 +1578,7 @@ void SI4060_setup_ordinary_GFSK(void)
 	SI4060_frequency_deviation(TX_DEVIATION_APRS);			// 0x06E9 18kHz, 0x0625 16kHz
 	SI4060_data_rate(0x002EE0);								// 13200Hz needed for creating 1200Hz and 2200Hz signal (0203A0 - 13200Hz, 00ABE0 - 4400Hz)
 	SI4060_filter_coeffs();
-	SI4060_power_level(POWER_LEVEL);						// 0x7F max
+	SI4060_power_level(SI4060_TX_power);					// 0x7F max
 	SI4060_change_state(0x07);								// TX state
 	SI4060_setup_pins(0x02, 0x04, 0x02, 0x02, 0x00, 0x10);	// enable TX_DATA_CLK output on SDO
 	

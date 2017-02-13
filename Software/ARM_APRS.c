@@ -861,7 +861,7 @@ void APRS_packet_construct(uint8_t *buffer)
 	
 	
 	// Flags
-	for(uint8_t i = 0 ; i < APRSFLAGS; i++)
+	for(uint32_t i = 0 ; i < APRSFLAGS; i++)
 	{
 		buffer[num++] = 0x7E;
 	}
@@ -874,7 +874,7 @@ void APRS_packet_construct(uint8_t *buffer)
 	}
 	
 	// SSID of the destination
-	buffer[num++] = 0b00110000 | DSSID;							// 0b0CRRSSID (C - command/response bit '1', RR - reserved '11', SSID - 0-15)
+	buffer[num++] = 0b01110000 | DSSID;							// 0b0CRRSSID (C - command/response bit '1', RR - reserved '11', SSID - 0-15)
 	
 	
 	// Source Address
@@ -884,7 +884,7 @@ void APRS_packet_construct(uint8_t *buffer)
 	}
 	
 	// SSID to specify an APRS symbol (11 - balloon)
-	buffer[num++] = 0b01110000 | SSID;							// 0b0CRRSSID (C - command/response bit '1', RR - reserved '11', SSID - 0-15)
+	buffer[num++] = 0b00110000 | SSID;							// 0b0CRRSSID (C - command/response bit '1', RR - reserved '11', SSID - 0-15)
 	
 	
 	// Path
@@ -933,6 +933,22 @@ void APRS_packet_construct(uint8_t *buffer)
 		
 		// SSID
 		buffer[num++] = 0b00110001;								// 0b0HRRSSID (H - 'has been repeated' bit, RR - reserved '11', SSID - 0-15)
+	}
+	else if(APRS_send_path == 4)								// WIDE2-2
+	{
+		buffer[num++] = 'W';
+		buffer[num++] = 'I';
+		buffer[num++] = 'D';
+		buffer[num++] = 'E';
+		buffer[num++] = '2';
+		buffer[num++] = ' ';
+		
+		// SSID
+		buffer[num++] = 0b00110010;								// 0b0HRRSSID (H - 'has been repeated' bit, RR - reserved '11', SSID - 0-15)
+	}
+	else														// no path
+	{
+		
 	}
 	
 	

@@ -7,6 +7,10 @@ BAUD RATE
 		6	-	10.666MHz
 		8	-	8MHz
 		32	-	2MHz
+	16MHz MCK
+		2	-	8MHz
+		8	-	2MHz
+		32	-	500kHz
 	12MHz MCK
 		2	-	6MHz
 		6	-	2MHz
@@ -20,7 +24,7 @@ BAUD RATE
 
 
 #define SPI_TIMEOUT 15000
-#define SPI_SCBR 8													// MCK divider for effective BAUD RATE
+#define SPI_SCBR 2													// MCK divider for effective BAUD RATE
 
 
 // Functions

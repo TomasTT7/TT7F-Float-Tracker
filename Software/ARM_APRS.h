@@ -5,6 +5,25 @@
 #include "stdint.h"
 
 
+/*
+SSID
+	-0 Your primary station usually fixed and message capable
+	-1 generic additional station, digi, mobile, wx, etc
+	-2 generic additional station, digi, mobile, wx, etc
+	-3 generic additional station, digi, mobile, wx, etc
+	-4 generic additional station, digi, mobile, wx, etc
+	-5 Other networks (Dstar, Iphones, Androids, Blackberry's etc)
+	-6 Special activity, Satellite ops, camping or 6 meters, etc
+	-7 walkie talkies, HT's or other human portable
+	-8 boats, sailboats, RV's or second main mobile
+	-9 Primary Mobile (usually message capable)
+	-10 internet, Igates, echolink, winlink, AVRS, APRN, etc
+	-11 balloons, aircraft, spacecraft, etc
+	-12 APRStt, DTMF, RFID, devices, one-way trackers*, etc
+	-13 Weather stations
+	-14 Truckers or generally full time drivers
+	-15 generic additional station, digi, mobile, wx, etc
+*/
 #define SSID 11											// APRS source address SSID
 #define DSSID 0											// APRS destination address SSID
 #define APRSFLAGS 12									// number of 0x7E FLAGS in the beginning of the APRS message

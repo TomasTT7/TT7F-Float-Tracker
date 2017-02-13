@@ -26,9 +26,12 @@ SI4060 AND SAM3S8 WIRING
 
 /*
 	MODEM_FREQ_DEV = (2^19 * OUTDIV * deviation_Hz) / (Npresc * TCXO_Hz)
+	Npresc = 2
+	(the result represents PEAK DEVIATION - deviation of the peak from the carrier)
 	
 	434MHz	[OUTDIV 8]		39		1200Hz			33		1000Hz			26		800Hz			16	450Hz
 	144MHz	[OUTDIV 24]		1179	12000Hz			983		10000Hz			688		7000Hz			432	4400Hz			216	2200Hz			118	1200Hz
+	(these devitions represent PEAK to PEAK deviation)
 */
 #define TX_DEVIATION_RTTY	16 
 #define TX_DEVIATION_APRS	688
@@ -48,16 +51,16 @@ SI4060 AND SAM3S8 WIRING
 /*
 	RTTY NORMAL and INTERRUPT versions.
 
-					64MHz MCK			12MHz MCK
-					TIMER_CLOCK4		TIMER_CLOCK2
+					64MHz MCK			16MHz MCK			12MHz MCK
+					TIMER_CLOCK4		TIMER_CLOCK2		TIMER_CLOCK2
 					 
-	BAUD RATE		compare value		compare value
-	50				10000				30000
-	100				5000				15000
-	200				2500				7500
-	300				1667				5000
-	600				833					2500
-	1200			417					1250
+	BAUD RATE		compare value		compare value		compare value
+	50				10000				40000				30000
+	100				5000				20000				15000
+	200				2500				10000				7500
+	300				1667				6667				5000
+	600				833					3333				2500
+	1200			417					1667				1250
 	
 								TC_CMRx
 	TIMER_CLOCK1	MCK/2		0
@@ -66,7 +69,7 @@ SI4060 AND SAM3S8 WIRING
 	TIMER_CLOCK4	MCK/128		3
 	TIMER_CLOCK5	SLCK		4
 */
-#define COMPARE_VALUE_RTTY		2500
+#define COMPARE_VALUE_RTTY		5000
 #define TIMER_CLOCK_RTTY		0x03
 
 
@@ -104,20 +107,20 @@ SI4060 AND SAM3S8 WIRING
 	64MHz PLL		TIMER_CLOCK2 (0x01)		COMPARE_VALUE: 303		26400Hz
 	
 	16MHz XTAL		TIMER_CLOCK1 (0x00)		COMPARE_VALUE: 6667		1200Hz
-	16MHz XTAL		TIMER_CLOCK1 (0x00)		COMPARE_VALUE: 368		21739Hz
+	16MHz XTAL		TIMER_CLOCK1 (0x00)		COMPARE_VALUE: 736		21739Hz -> 10869Hz has to be slower with the the 'tableStep' doubled
 	16MHz XTAL		TIMER_CLOCK1 (0x00)		COMPARE_VALUE: 303		26400Hz
 	
 	12MHz XTAL		TIMER_CLOCK1 (0x00)		COMPARE_VALUE: 5000		1200Hz
 	12MHz XTAL		TIMER_CLOCK1 (0x00)		COMPARE_VALUE: 552		21739Hz -> 10869Hz has to be slower with the the 'tableStep' doubled
 	12MHz XTAL		TIMER_CLOCK1 (0x00)		COMPARE_VALUE: 227		26400Hz
 */
-#define TIMER_CLOCK_GFSK_SYNC_TC0				0x01
-#define COMPARE_VALUE_GFSK_SYNC_TC0				303				// 26400Hz
+#define TIMER_CLOCK_GFSK_SYNC_TC0				0x00
+#define COMPARE_VALUE_GFSK_SYNC_TC0				227				// 26400Hz
 
-#define TIMER_CLOCK_LOOKUP_TC0					0x01
-#define TIMER_CLOCK_LOOKUP_TC1					0x01
-#define COMPARE_VALUE_LOOKUP_TC0				6667			// 1200Hz
-#define COMPARE_VALUE_LOOKUP_TC1				368				// 21739Hz
+#define TIMER_CLOCK_LOOKUP_TC0					0x00
+#define TIMER_CLOCK_LOOKUP_TC1					0x00
+#define COMPARE_VALUE_LOOKUP_TC0				5000			// 1200Hz
+#define COMPARE_VALUE_LOOKUP_TC1				552				// 21739Hz
 
 #define APRS_BUFFER_SIZE						350
 #define CTS_TIMEOUT								15000			// timeout for a while loop waiting for Si4060 response 
@@ -158,8 +161,8 @@ static float lookup_tbl_multiplier = LOOKUP_TBL_MULTIPLIER_1200;
 	When running at 12MHz, the MCU doesn't seem to keep up with the 21739Hz timer speed required. The speed is halved to 10869Hz
 	and the steps through the SineLookUp table doubled.
 */
-#define LOOKUP_TBL_STEP_1200					14
-#define LOOKUP_TBL_STEP_2200					26
+#define LOOKUP_TBL_STEP_1200					28
+#define LOOKUP_TBL_STEP_2200					52
 
 
 /*
@@ -225,6 +228,7 @@ extern uint16_t APRS_packet_size;									// holds the length of the current APR
 extern uint8_t APRSpacket[APRS_BUFFER_SIZE];						// array for the APRS packet
 
 extern uint32_t APRS_tx_frequency;
+extern uint8_t SI4060_TX_power;
 
 
 // Functions
@@ -234,6 +238,7 @@ void SI4060_deinit(void);
 void SI4060_setup_pins(uint8_t gpio0, uint8_t gpio1, uint8_t gpio2, uint8_t gpio3, uint8_t nirq, uint8_t sdo);
 void SI4060_frequency(uint32_t freq);
 void SI4060_frequency_fast(uint32_t freq);
+void SI4463_tx_hop(uint32_t freq, uint16_t pll_settle_time);
 void SI4060_frequency_deviation(uint32_t deviation);
 void SI4060_frequency_offset(uint32_t offset);
 void SI4060_channel_step_size(uint32_t step);
@@ -244,6 +249,7 @@ void SI4060_data_rate(uint32_t data_rate);
 void SI4060_change_state(uint8_t state);
 void SI4060_start_TX(uint8_t channel);
 void SI4060_info(void);
+void SI4060_func_info(void);
 void SI4060_PA_mode(uint8_t pa_sel, uint8_t pa_mode);
 uint16_t SI4060_get_temperature(void);
 
