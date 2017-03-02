@@ -1,6 +1,6 @@
 /* SSDV - Slow Scan Digital Video                                        */
 /*=======================================================================*/
-/* Copyright 2011-2012 Philip Heron <phil@sanslogic.co.uk                */
+/* Copyright 2011-2016 Philip Heron <phil@sanslogic.co.uk>               */
 /*                                                                       */
 /* This program is free software: you can redistribute it and/or modify  */
 /* it under the terms of the GNU General Public License as published by  */
@@ -26,21 +26,22 @@
 #define SSDV_FEED_ME     (1)
 #define SSDV_HAVE_PACKET (2)
 #define SSDV_BUFFER_FULL (3)
-#define SSDV_EOI         (4)
+#define SSDV_EOI		 (4)
 
 /* Packet details */
 #define SSDV_PKT_SIZE         (0x100)
 #define SSDV_PKT_SIZE_HEADER  (0x0F)
 #define SSDV_PKT_SIZE_CRC     (0x04)
 #define SSDV_PKT_SIZE_RSCODES (0x20)
-#define SSDV_PKT_SIZE_PAYLOAD (SSDV_PKT_SIZE - SSDV_PKT_SIZE_HEADER - SSDV_PKT_SIZE_CRC - SSDV_PKT_SIZE_RSCODES)
-#define SSDV_PKT_SIZE_CRCDATA (SSDV_PKT_SIZE_HEADER + SSDV_PKT_SIZE_PAYLOAD - 1)
 
-#define TBL_LEN (546) // Maximum size of the DQT and DHT tables
-#define HBUFF_LEN (16) // Extra space for reading marker data
+#define TBL_LEN (546) /* Maximum size of the DQT and DHT tables */
+#define HBUFF_LEN (16) /* Extra space for reading marker data */
 
-#define SSDV_TYPE_NORMAL (0)
-#define SSDV_TYPE_NOFEC  (1)
+#define SSDV_MAX_CALLSIGN (6) /* Maximum number of characters in a callsign */
+
+#define SSDV_TYPE_INVALID (0xFF)
+#define SSDV_TYPE_NORMAL  (0x00)
+#define SSDV_TYPE_NOFEC (0x01)
 
 typedef struct
 {
@@ -59,6 +60,7 @@ typedef struct
 	uint8_t  mcu_mode;  /* 0 = 2x2, 1 = 2x1, 2 = 1x2, 3 = 1x1           */
 	uint16_t mcu_id;
 	uint16_t mcu_count;
+	uint8_t  quality;   /* JPEG quality level for encoding, 0-7         */
 	uint16_t packet_mcu_id;
 	uint8_t  packet_mcu_offset;
 	
@@ -75,6 +77,7 @@ typedef struct
 	uint8_t *out;      /* Pointer to the beginning of the output buffer */
 	uint8_t *outp;     /* Pointer to the next output byte               */
 	size_t out_len;    /* Number of output bytes remaining              */
+	char out_stuff;    /* Flag to add stuffing bytes to output          */
 	
 	/* Output bits */
 	uint32_t outbits;  /* Output bit buffer                             */
@@ -102,6 +105,10 @@ typedef struct
 	uint8_t acrle;      /* RLE value for current AC value               */
 	uint8_t accrle;     /* Accumulative RLE value                       */
 	uint16_t dri;       /* Reset interval                               */
+	enum {
+		S_ENCODING = 0,
+		S_DECODING,
+	} mode;
 	uint32_t reset_mcu; /* MCU block to do absolute encoding            */
 	char needbits;      /* Number of bits needed to decode integer      */
 	
@@ -117,8 +124,24 @@ typedef struct
 	
 } ssdv_t;
 
-// Functions
-extern char ssdv_enc_init(ssdv_t *s, uint8_t type, char *callsign, uint8_t image_id);
+typedef struct {
+	uint8_t  type;
+	uint32_t callsign;
+	char     callsign_s[SSDV_MAX_CALLSIGN + 1];
+	uint8_t  image_id;
+	uint16_t packet_id;
+	uint16_t width;
+	uint16_t height;
+	uint8_t  eoi;
+	uint8_t  quality;
+	uint16_t mcu_mode;
+	uint8_t  mcu_offset;
+	uint16_t mcu_id;
+	uint16_t mcu_count;
+} ssdv_packet_info_t;
+
+/* Encoding */
+extern char ssdv_enc_init(ssdv_t *s, uint8_t type, char *callsign, uint8_t image_id, int8_t quality);
 extern char ssdv_enc_set_buffer(ssdv_t *s, uint8_t *buffer);
 extern char ssdv_enc_get_packet(ssdv_t *s);
 extern char ssdv_enc_feed(ssdv_t *s, uint8_t *buffer, size_t length);

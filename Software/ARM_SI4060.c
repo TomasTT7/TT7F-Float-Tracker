@@ -802,7 +802,7 @@ void TC0_Handler(void)
 
 
 /*
-
+	An interrupt routine used in the LOOKUP version of APRS modulation.
 */
 void TC1_Handler(void)
 {
@@ -832,24 +832,24 @@ void TC1_Handler(void)
 
 
 /*
-
+	Stops the TimerCounter0.
 */
 void TC0_stop(void)
 {
 	TC0->TC_CHANNEL[0].TC_IDR = (1 << 4);					// disable RC Compare interrupt
 	TC0->TC_CHANNEL[0].TC_CCR = TC_CCR_CLKDIS;				// disable the clock
-	PMC->PMC_PCDR0 |= (1 << ID_TC0);						// enable clock to the peripheral
+	PMC->PMC_PCDR0 |= (1 << ID_TC0);						// disable clock to the peripheral
 }
 
 
 /*
-	
+	Stops the TimerCounter1.
 */
 void TC1_stop(void)
 {
 	TC0->TC_CHANNEL[1].TC_IDR = (1 << 4);					// disable RC Compare interrupt
 	TC0->TC_CHANNEL[1].TC_CCR = TC_CCR_CLKDIS;				// disable the clock
-	PMC->PMC_PCDR0 |= (1 << ID_TC1);						// enable clock to the peripheral
+	PMC->PMC_PCDR0 |= (1 << ID_TC1);						// disable clock to the peripheral
 }
 
 
@@ -911,12 +911,12 @@ void SI4060_tx_OOK_blips_PS(uint32_t count, uint32_t duration, uint32_t delay)
 		600			0.92		-
 		1200		0.46		-
 */
-void SI4060_tx_RTTY_string_DELAY(uint8_t *string)
+void SI4060_tx_RTTY_string_DELAY(uint8_t *string, uint32_t len)
 {
 	uint8_t c;
 	c = *string++;
 	
-	while(c != '\0')
+	for(uint32_t x = 0; x < len; x++)
 	{
 		PIOB->PIO_CODR |= PIO_PB4;								// clear GPIO1 - START BIT
 		SysTick_delay_ms(TXDELAY_RTTY);
@@ -944,14 +944,14 @@ void SI4060_tx_RTTY_string_DELAY(uint8_t *string)
 	Used in combination with TC0_init_RTTY_NORMAL().
 	As opposed to SI4060_RTTY_TX_string_DELAY() it uses TC0 to time the delays between individual bits.
 */
-void SI4060_tx_RTTY_string_TC0(uint8_t *string)
+void SI4060_tx_RTTY_string_TC0(uint8_t *string, uint32_t len)
 {	
 	uint8_t c;
 	c = *string++;
 	
 	while(!(TC0->TC_CHANNEL[0].TC_SR & (0x01 << 4)));			// wait for CPCS flag - initial synchronization
 	
-	while(c != '\0')
+	for(uint32_t x = 0; x < len; x++)
 	{
 		PIOB->PIO_CODR |= PIO_PB4;								// clear GPIO1 - START BIT
 		while(!(TC0->TC_CHANNEL[0].TC_SR & (0x01 << 4)));		// wait for CPCS flag - programmed delay

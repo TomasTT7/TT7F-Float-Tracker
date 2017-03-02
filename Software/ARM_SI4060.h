@@ -33,7 +33,7 @@ SI4060 AND SAM3S8 WIRING
 	144MHz	[OUTDIV 24]		1179	12000Hz			983		10000Hz			688		7000Hz			432	4400Hz			216	2200Hz			118	1200Hz
 	(these devitions represent PEAK to PEAK deviation)
 */
-#define TX_DEVIATION_RTTY	16 
+#define TX_DEVIATION_RTTY	26 
 #define TX_DEVIATION_APRS	688
 #define TX_DEVIATION_APRS_1200	324						// manual pre-emphasis
 #define TX_DEVIATION_APRS_2200	589						// manual pre-emphasis
@@ -70,7 +70,7 @@ SI4060 AND SAM3S8 WIRING
 	TIMER_CLOCK5	SLCK		4
 */
 #define COMPARE_VALUE_RTTY		5000
-#define TIMER_CLOCK_RTTY		0x03
+#define TIMER_CLOCK_RTTY		0x01
 
 
 // RTTY NORMAL VERSION (ms)
@@ -265,8 +265,8 @@ void TC1_stop(void);
 
 void SI4060_tx_OOK_blips(uint32_t count, uint32_t duration, uint32_t delay);
 void SI4060_tx_OOK_blips_PS(uint32_t count, uint32_t duration, uint32_t delay);
-void SI4060_tx_RTTY_string_DELAY(uint8_t *string);
-void SI4060_tx_RTTY_string_TC0(uint8_t *string);
+void SI4060_tx_RTTY_string_DELAY(uint8_t *string, uint32_t len);
+void SI4060_tx_RTTY_string_TC0(uint8_t *string, uint32_t len);
 void SI4060_tx_APRS_GFSK_sync(void);
 void SI4060_tx_APRS_GFSK_sync_BITS(uint8_t * buffer, uint32_t startFlagsEnd, uint32_t endFlagsStart);
 void SI4060_tx_APRS_look_up(void);

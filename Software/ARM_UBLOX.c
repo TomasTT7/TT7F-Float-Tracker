@@ -589,7 +589,7 @@ void UBLOX_parse_0106(volatile uint8_t *buffer)
 */
 void UBLOX_parse_0624(volatile uint8_t *buffer)
 {
-	GPS_UBX_error_bitfield |= (1 << 0);
+	//GPS_UBX_error_bitfield |= (1 << 0);
 	
 	if(buffer[0] == 0xB5 && buffer[1] == 0x62 && buffer[2] == 0x06 && buffer[3] == 0x24)
 	{
@@ -597,7 +597,7 @@ void UBLOX_parse_0624(volatile uint8_t *buffer)
 		{
 			GPSnavigation = buffer[8];
 			
-			GPS_UBX_error_bitfield &= ~(1 << 0);
+			//GPS_UBX_error_bitfield &= ~(1 << 0);
 		}else{
 			GPS_UBX_checksum_error++;
 			
@@ -1065,8 +1065,8 @@ void UBLOX_process_ZDA(uint8_t *buffer)
 /*
 	Function to construct a telemetry string according to UKHAS specification. It uses decimal degrees format for Latitude and Longitude.
 	
-	$$CALLSIGN,sentence_id,time,latitude,longitude,altitude,satellites,fix,solar panel voltage,battery voltage,internal temperature,error*CHECKSUM\n
-	$$$$TT7F1,1,20:31:15,49.49171,18.22271,1131,11,3,2048,4120,15, *0C5D\n
+	$$CALLSIGN,sentence_id,time,latitude,longitude,altitude,satellites,fix,solar panel voltage,battery voltage,SAM3S temperature,Si4060 temperature,error*CHECKSUM\n
+	$$$$TT7F1,1,20:31:15,49.49171,18.22271,1131,11,3,2048,4120,15,15, *0C5D\n
 	
 	Checksum is calculated on bytes between the last dollar sign '$' and the asterisk '*' using CRC_XMODEM_UPDATE function.
 	The telemetry string must end with the new line '\n' character.
@@ -1155,19 +1155,23 @@ uint32_t UBLOX_construct_telemetry_UBX(uint8_t *buffer, uint32_t sequence)
 	buffer[sequence++] = ',';
 	
 	// POWER SAVE / CONTINUOUS MODE
-	//buffer[sequence++] = GPSpowersavemodestate + '0';
-	//buffer[sequence++] = ',';
+	buffer[sequence++] = GPSpowersavemodestate + '0';
+	buffer[sequence++] = ',';
 	
 	// ADC READINGS
 	uint32_t AD3 = ((uint32_t)AD3data * 3300) / 4096;									// converting raw ADC reading to mV
 	uint32_t AD9 = ((uint32_t)AD9data * 6600) / 4096;									// converting raw ADC reading to mV
-	float temperatureF = (float)AD15data * 0.30402 - 274.896 + TEMP_OFFSET;				// converting raw ADC reading to °C
+	float temperatureF1 = (float)AD15data * 0.30402 - 274.896 + TEMP_OFFSET;			// converting raw ADC reading to °C
+	float temperatureF2 = (float)Si4060Temp * 0.222 - 297;								// converting raw ADC reading to °C
 	sequence = ASCII_16bit_transmit((uint16_t)AD3, buffer, sequence);
 	buffer[sequence++] = ',';
 	sequence = ASCII_16bit_transmit((uint16_t)AD9, buffer, sequence);
 	buffer[sequence++] = ',';
-	if(temperatureF < 0) buffer[sequence++] = '-';
-	sequence = ASCII_16bit_transmit((uint16_t)abs(temperatureF), buffer, sequence);
+	if(temperatureF1 < 0) buffer[sequence++] = '-';
+	sequence = ASCII_16bit_transmit((uint16_t)abs(temperatureF1), buffer, sequence);
+	buffer[sequence++] = ',';
+	if(temperatureF2 < 0) buffer[sequence++] = '-';
+	sequence = ASCII_16bit_transmit((uint16_t)abs(temperatureF2), buffer, sequence);
 	buffer[sequence++] = ',';
 	
 	// ERROR BITFIELD
@@ -1197,8 +1201,8 @@ uint32_t UBLOX_construct_telemetry_UBX(uint8_t *buffer, uint32_t sequence)
 /*
 	Function to construct a telemetry string according to UKHAS specification. It uses NMEA format for Latitude and Longitude.
 	
-	$$CALLSIGN,sentence_id,time,latitude,longitude,altitude,satellites,fix,solar panel voltage,battery voltage,internal temperature,error*CHECKSUM\n
-	$$$$TT7F1,1,20:31:15,4949.171,01822.271,1131,11,3,2048,4120,15, *0C5D\n
+	$$CALLSIGN,sentence_id,time,latitude,longitude,altitude,satellites,fix,solar panel voltage,battery voltage,SAM3S temperature,Si4060 temperature,error*CHECKSUM\n
+	$$$$TT7F1,1,20:31:15,4949.171,01822.271,1131,11,3,2048,4120,15,15, *0C5D\n
 	
 	Checksum is calculated on bytes between the last dollar sign '$' and the asterisk '*' using CRC_XMODEM_UPDATE function.
 	The telemetry string must end with the new line '\n' character.
@@ -1297,13 +1301,17 @@ uint32_t UBLOX_construct_telemetry_NMEA(uint8_t *buffer, uint32_t sequence)
 	// ADC READINGS
 	uint32_t AD3 = ((uint32_t)AD3data * 3300) / 4096;									// converting raw ADC reading to mV
 	uint32_t AD9 = ((uint32_t)AD9data * 6600) / 4096;									// converting raw ADC reading to mV
-	float temperatureF = (float)AD15data * 0.30402 - 274.896 + TEMP_OFFSET;				// converting raw ADC reading to °C
+	float temperatureF1 = (float)AD15data * 0.30402 - 274.896 + TEMP_OFFSET;				// converting raw ADC reading to °C
+	float temperatureF2 = (float)Si4060Temp * 0.222 - 297;								// converting raw ADC reading to °C
 	sequence = ASCII_16bit_transmit((uint16_t)AD3, buffer, sequence);
 	buffer[sequence++] = ',';
 	sequence = ASCII_16bit_transmit((uint16_t)AD9, buffer, sequence);
 	buffer[sequence++] = ',';
-	if(temperatureF < 0) buffer[sequence++] = '-';
-	sequence = ASCII_16bit_transmit((uint16_t)abs(temperatureF), buffer, sequence);
+	if(temperatureF1 < 0) buffer[sequence++] = '-';
+	sequence = ASCII_16bit_transmit((uint16_t)abs(temperatureF1), buffer, sequence);
+	buffer[sequence++] = ',';
+	if(temperatureF2 < 0) buffer[sequence++] = '-';
+	sequence = ASCII_16bit_transmit((uint16_t)abs(temperatureF2), buffer, sequence);
 	buffer[sequence++] = ',';
 	
 	// ERROR BITFIELD
