@@ -16,8 +16,8 @@ GPS_UBX_error_bitfield
 	Bit 4 0b00110000 0611 error POWER MODE																										'0'
 	Bit 3 0b00101000 0121 error TIME																											'('
 	Bit 2 0b00100100 0102 error POSITION DATA / 0107 error POSITION DATA																		'$'
-	Bit 1 0b00100010 0106 error FIX, SATS																										'"'
-	Bit 0 0b00100001 SSDV get image error																										'!'
+	Bit 1 0b00100010 SSDV communication error																									'"'
+	Bit 0 0b00100001 SSDV image buffer overflow																									'!'
 
 	character 'DEL' doesn't show in DL-FLDIGI, needs to be changed ->																			'_'
 	character corresponds to ',' which is used in the parser ->																					'L'

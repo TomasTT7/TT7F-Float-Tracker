@@ -5,7 +5,7 @@
  *  Author: Tomy2
  */ 
 
-#include "sam.h"
+#include "sam3s8b.h"
 #include "ARM_MT9D111.h"
 #include "ARM_SSDV.h"
 #include "ARM_TWI.h"
@@ -533,7 +533,7 @@ uint32_t MT9D111_get_image(void)
 		PWM_deinit();
 		TWI_deinit();
 		LED_PB5_blink(1000);
-		return 0;
+		return 1;
 	}
 	
 	LED_PA0_blink(5);

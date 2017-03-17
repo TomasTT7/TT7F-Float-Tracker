@@ -5,7 +5,7 @@
  *  Author: Tomy2
  */ 
 
-#include "sam.h"
+#include "sam3s8b.h"
 #include "ARM_UBLOX.h"
 #include "ARM_UART.h"
 #include "ARM_DELAY.h"
@@ -421,7 +421,7 @@ void UBLOX_fill_buffer_NMEA(uint8_t *buffer)
 		buffer[i] = 0;
 	}
 	
-	if(!timeout) GPS_UBX_error_bitfield |= (1 << 0);
+	if(!timeout) GPS_NMEA_error_bitfield |= (1 << 0);
 	
 	uint8_t bytes = UART1_buffer_pointer;
 	for(uint8_t i = 0; i < bytes; i++)
@@ -547,16 +547,12 @@ void UBLOX_parse_0121(volatile uint8_t *buffer)
 */
 void UBLOX_parse_0106(volatile uint8_t *buffer)
 {
-	GPS_UBX_error_bitfield |= (1 << 1);
-	
 	if(buffer[0] == 0xB5 && buffer[1] == 0x62 && buffer[2] == 0x01 && buffer[3] == 0x06)
 	{
 		if(UBLOX_verify_checksum(buffer, 60))
 		{
 			GPSfix = buffer[16];
 			GPSsats = buffer[53];
-			
-			GPS_UBX_error_bitfield &= ~(1 << 1);
 		}else{
 			GPS_UBX_checksum_error++;
 			
@@ -589,15 +585,11 @@ void UBLOX_parse_0106(volatile uint8_t *buffer)
 */
 void UBLOX_parse_0624(volatile uint8_t *buffer)
 {
-	//GPS_UBX_error_bitfield |= (1 << 0);
-	
 	if(buffer[0] == 0xB5 && buffer[1] == 0x62 && buffer[2] == 0x06 && buffer[3] == 0x24)
 	{
 		if(UBLOX_verify_checksum(buffer, 44))
 		{
 			GPSnavigation = buffer[8];
-			
-			//GPS_UBX_error_bitfield &= ~(1 << 0);
 		}else{
 			GPS_UBX_checksum_error++;
 			

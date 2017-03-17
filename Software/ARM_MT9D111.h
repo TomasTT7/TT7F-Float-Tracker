@@ -73,7 +73,7 @@ extern uint8_t JPEGbuffer[MT9D111_BUFFER_SIZE];
 		Bit 5		Enable auto-select quantization table.
 		Bit 6:7		Quantization table ID.
 */
-#define JPEG_CONFIGURATION 0b00111010
+#define JPEG_CONFIGURATION 0b00110000
 
 
 /*
@@ -89,7 +89,7 @@ extern uint8_t JPEGbuffer[MT9D111_BUFFER_SIZE];
 		3	user-defined gamma table
 	
 	CONTRAST
-		0	slope 100%
+		0	slope 100% - didn't work (?) hung when taking image
 		1	slope 125%
 		2	slope 150%
 		3	slope 175%
@@ -97,7 +97,7 @@ extern uint8_t JPEGbuffer[MT9D111_BUFFER_SIZE];
 */
 #define JPEG_COLOR_FORMAT 0
 #define JPEG_GAMMA 2
-#define JPEG_CONTRAST 4
+#define JPEG_CONTRAST 1
 
 #define FORMAT_YCBCR422 0
 #define FORMAT_YCBCR420 1
@@ -114,7 +114,7 @@ extern uint8_t JPEGbuffer[MT9D111_BUFFER_SIZE];
 		Bit 5		force outdoor white balance
 		Bit 6:7		improved Auto focus
 */
-#define JPEG_DRIVERS 0b00000001
+#define JPEG_DRIVERS 0b00010100
 #define JPEG_RESTART_INTERVAL 0
 
 
