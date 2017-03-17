@@ -50,17 +50,13 @@ PMC_PCER1
 #include "stdint.h"
 
 
-#define CKGR_MOR_PASSWORD (0x37u << 16) // KEY to write CKGR_MOR
-
-
-// Variables
-extern uint32_t SystemCoreClock;
+#define CKGR_MOR_PASSWORD (0x37u << 16)									// KEY to write CKGR_MOR
 
 
 // Functions
-void PS_SystemInit(void);
+void PS_SystemInit(uint8_t mula, uint8_t diva, uint8_t pres);
 void PS_FLASH_init(void);
-void PS_switch_MCK_to_FastRC(uint32_t moscrcf, uint32_t prescaler);		// moscrcf 0 - 4MHz, 1 - 8MHz, 2 - 12MHz
+void PS_switch_MCK_to_FastRC(uint32_t moscrcf, uint32_t pres);			// moscrcf 0 - 4MHz, 1 - 8MHz, 2 - 12MHz
 void PS_switch_FastRC_to_XTAL(void);
 void PS_switch_FastRC_to_SLCK(void);
 void PS_Brownout_Detector_enable(void);

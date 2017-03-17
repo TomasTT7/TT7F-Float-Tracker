@@ -81,40 +81,64 @@
 		0.25	0.3		0.33		0.3		0.34		0.23	0.33	mA
 		0.125	0.21	0.25		0.22	0.24		0.2		0.28	mA
 		0.032	0.035	0.093		0.033	0.093		0.03	0.12	mA
+	
+	MCK FREQUENCY
+		MULA: PLLA Multiplier				1-36
+		DIVA: Divider						0-255
+		PRES: Processor Clock Prescaler
+			0		CLK_1			Selected clock
+			1		CLK_2			Selected clock divided by 2
+			2		CLK_4			Selected clock divided by 4
+			3		CLK_8			Selected clock divided by 8
+			4		CLK_16			Selected clock divided by 16
+			5		CLK_32			Selected clock divided by 32
+			6		CLK_64			Selected clock divided by 64
+			7		CLK_3			Selected clock divided by 3
+		
+		PLLA_frequency = XTAL x (MULA + 1) / DIVA
+		MCK = PLLA_frequency / pres
+		
+		128MHz = 16MHz x (23 + 1) / 3
+		64MHz = 128MHz / 2
+		
+		MCK		XTAL	MULA	DIVA	PRES
+		64MHz	12MHz	31		3		1
+		4MHz	16MHz	11		3		4
+		12MHz	16MHz	11		2		3
+		16MHz	16MHz	11		3		2
+		64MHZ	16MHz	23		3		1
 */
-void PS_SystemInit(void)
+void PS_SystemInit(uint8_t mula, uint8_t diva, uint8_t pres)
 {
 	// EEFC Flash Mode Register - Number of cycles for Read/Write operations = 3 + 1 (defines the maximum frequency); 128-bit access in read Mode only
 	EFC->EEFC_FMR = (3 << 8);
 	
 	// Initialize main oscillator
-	if(!(PMC->CKGR_MOR & (1 << 24))) // IF the Main On-Chip RC Oscillator is selected (the Main Crystal Oscillator is not selected).
+	if(!(PMC->CKGR_MOR & (1 << 24)))					// IF the Main On-Chip RC Oscillator is selected (the Main Crystal Oscillator is not selected).
 	{
 		// PMC Clock Generator Main Oscillator Register - Main Crystal Oscillator start-up time 8 x 8; the Main On-Chip RC Oscillator is enabled; the Main Crystal Oscillator is enabled
 		PMC->CKGR_MOR = CKGR_MOR_PASSWORD | (0x08u << 8) | (0x01u << 3) | (0x01u << 0);
-		while(!(PMC->PMC_SR & (0x01u << 0))); // wait for the Main XTAL oscillator to stabilize
+		while(!(PMC->PMC_SR & (0x01u << 0)));														// wait for the Main XTAL oscillator to stabilize
 	}
 	
 	// Switch to 3-20MHz Xtal oscillator
-	PMC->CKGR_MOR = CKGR_MOR_PASSWORD | (0x08u << 8) | (0x01u << 3) | (0x01u << 0) | (0x01u << 24); // the Main Crystal Oscillator is selected
-	while(!(PMC->PMC_SR & (0x01u << 16))); // wait for the Main Oscillator to be selected
+	PMC->CKGR_MOR = CKGR_MOR_PASSWORD | (0x08u << 8) | (0x01u << 3) | (0x01u << 0) | (0x01u << 24);	// the Main Crystal Oscillator is selected
+	while(!(PMC->PMC_SR & (0x01u << 16)));															// wait for the Main Oscillator to be selected
 	
-	PMC->PMC_MCKR = (PMC->PMC_MCKR & ~(uint32_t)(0x03u << 0)) | (0x01u << 0); // Master Clock Source = Main Clock
-	while(!(PMC->PMC_SR & (0x01u << 3))); // wait for the Master Clock to be ready
+	PMC->PMC_MCKR = (PMC->PMC_MCKR & ~(uint32_t)(0x03u << 0)) | (0x01u << 0);						// Master Clock Source = Main Clock
+	while(!(PMC->PMC_SR & (0x01u << 3)));															// wait for the Master Clock to be ready
 	
 	// Initialize PLLA
-	PMC->CKGR_PLLAR = (0x01u << 29) | (0x1fUL << 16) | (0x3fUL << 8) | (0x03UL << 0); // PLLA Multiplier = 31 + 1; PLLA Counter = 63 * 8; Divider = 3
-	while(!(PMC->PMC_SR & (0x01u << 1))); // wait for PLLA to lock
+	PMC->CKGR_PLLAR = (0x01u << 29) | (mula << 16) | (0x3fUL << 8) | (diva << 0);	// PLLA Multiplier = 31 + 1; PLLA Counter = 63 * 8; Divider = 3
+	while(!(PMC->PMC_SR & (0x01u << 1)));															// wait for PLLA to lock
 	
 	// Switch to main clock
-	PMC->PMC_MCKR = (((0x01u << 4) | (0x02u << 0)) & ~(0x03u << 0)) | (0x01u << 0); // Selected clock divided by 2; Master Clock Source = Main Clock
-	while(!(PMC->PMC_SR & (0x01u << 3))); // wait for the Master Clock to be ready
+	PMC->PMC_MCKR = (((pres << 4) | (0x02u << 0)) & ~(0x03u << 0)) | (0x01u << 0); // Selected clock divided by 2; Master Clock Source = Main Clock
+	while(!(PMC->PMC_SR & (0x01u << 3)));															// wait for the Master Clock to be ready
 	
 	// Switch to PLLA
-	PMC->PMC_MCKR = (0x01u << 4) | (0x02u << 0); // Selected clock divided by 2; Master Clock Source = PLLA Clock
-	while(!(PMC->PMC_SR & (0x01u << 3))); // wait for the Master Clock to be ready
-
-	SystemCoreClock = 64000000UL;
+	PMC->PMC_MCKR = (pres << 4) | (0x02u << 0);									// Selected clock divided by 2; Master Clock Source = PLLA Clock
+	while(!(PMC->PMC_SR & (0x01u << 3)));															// wait for the Master Clock to be ready
 }
 
 
@@ -132,29 +156,43 @@ void PS_FLASH_init(void)
 	Manages disabling the PLL and switching the Main Clock to the Fast RC Oscillator.
 	Required for the Wait Mode.
 	
-	moscrcf 0 - 4MHz, 1 - 8MHz, 2 - 12MHz
+	MOSCRCF: Main On-Chip RC Oscillator Frequency Selection
+		0x0		4_MHz		The Fast RC Oscillator Frequency is at 4 MHz (default)
+		0x1		8_MHz		The Fast RC Oscillator Frequency is at 8 MHz
+		0x2		12_MHz		The Fast RC Oscillator Frequency is at 12 MHz
+		
+	PRES: Processor Clock Prescaler
+		0		CLK_1			Selected clock
+		1		CLK_2			Selected clock divided by 2
+		2		CLK_4			Selected clock divided by 4
+		3		CLK_8			Selected clock divided by 8
+		4		CLK_16			Selected clock divided by 16
+		5		CLK_32			Selected clock divided by 32
+		6		CLK_64			Selected clock divided by 64
+		7		CLK_3			Selected clock divided by 3
 */
-void PS_switch_MCK_to_FastRC(uint32_t moscrcf, uint32_t prescaler)
+void PS_switch_MCK_to_FastRC(uint32_t moscrcf, uint32_t pres)
 {
 	// Enable Fast RC oscillator but DO NOT switch to RC now . Keep MOSCSEL to 1
 	PMC->CKGR_MOR = CKGR_MOR_PASSWORD | (0x01u << 24) | (0x01u << 3) | (0x01u << 0);
-	while(!(PMC->PMC_SR & (0x01u << 17))); // wait for the Fast RC to stabilize
+	while(!(PMC->PMC_SR & (0x01u << 17)));															// wait for the Fast RC to stabilize
 	
 	// Switch from Main XTAL oscillator to Fast RC
 	PMC->CKGR_MOR = CKGR_MOR_PASSWORD | (0x01u << 3) | (0x01u << 0);
-	while(!(PMC->PMC_SR & (0x01u << 16))); // wait for Main Oscillator Selection Status bit MOSCSELS
+	while(!(PMC->PMC_SR & (0x01u << 16)));															// wait for Main Oscillator Selection Status bit MOSCSELS
 	
 	// Disable Main XTAL Oscillator
 	PMC->CKGR_MOR = CKGR_MOR_PASSWORD | (0x01u << 3);
+	
 	// Change frequency of Fast RC oscillator
 	PMC->CKGR_MOR = CKGR_MOR_PASSWORD | (PMC->CKGR_MOR & ~(0x07u << 4)) | (moscrcf << 4);
-	while(!(PMC->PMC_SR & (0x01u << 17))); // wait for the Fast RC to stabilize
+	while(!(PMC->PMC_SR & (0x01u << 17)));															// wait for the Fast RC to stabilize
 	
 	// Switch to main clock
 	PMC->PMC_MCKR = (PMC->PMC_MCKR & (uint32_t)~(0x03u << 0)) | (0x01u << 0);
 	while(!(PMC->PMC_SR & (0x01u << 3)));
 	
-	PMC->PMC_MCKR = (PMC->PMC_MCKR & (uint32_t)~(0x07u << 4)) | (prescaler << 4);
+	PMC->PMC_MCKR = (PMC->PMC_MCKR & (uint32_t)~(0x07u << 4)) | (pres << 4);
 	while(!(PMC->PMC_SR & (0x01u << 3)));
 	
 	// Stop PLLA and PLLB
@@ -169,19 +207,19 @@ void PS_switch_MCK_to_FastRC(uint32_t moscrcf, uint32_t prescaler)
 void PS_switch_FastRC_to_XTAL(void)
 {
 	// Initialize main oscillator
-	if(!(PMC->CKGR_MOR & (1 << 24))) // IF the Main On-Chip RC Oscillator is selected (the Main Crystal Oscillator is not selected).
+	if(!(PMC->CKGR_MOR & (1 << 24)))					// IF the Main On-Chip RC Oscillator is selected (the Main Crystal Oscillator is not selected).
 	{
 		// PMC Clock Generator Main Oscillator Register - Main Crystal Oscillator start-up time 8 x 8; the Main On-Chip RC Oscillator is enabled; the Main Crystal Oscillator is enabled
 		PMC->CKGR_MOR = CKGR_MOR_PASSWORD | (0x08u << 8) | (0x01u << 3) | (0x01u << 0);
-		while(!(PMC->PMC_SR & (0x01u << 0))); // wait for the Main XTAL oscillator to stabilize
+		while(!(PMC->PMC_SR & (0x01u << 0)));														// wait for the Main XTAL oscillator to stabilize
 	}
 	
 	// Switch to 3-20MHz Xtal oscillator
 	PMC->CKGR_MOR = CKGR_MOR_PASSWORD | (0x08u << 8) | (0x01u << 3) | (0x01u << 0) | (0x01u << 24); // the Main Crystal Oscillator is selected
-	while(!(PMC->PMC_SR & (0x01u << 16))); // wait for the Main Oscillator to be selected
+	while(!(PMC->PMC_SR & (0x01u << 16)));															// wait for the Main Oscillator to be selected
 	
-	PMC->PMC_MCKR = (PMC->PMC_MCKR & ~(uint32_t)(0x03u << 0)) | (0x01u << 0); // Master Clock Source = Main Clock
-	while(!(PMC->PMC_SR & (0x01u << 3))); // wait for the Master Clock to be ready
+	PMC->PMC_MCKR = (PMC->PMC_MCKR & ~(uint32_t)(0x03u << 0)) | (0x01u << 0);						// Master Clock Source = Main Clock
+	while(!(PMC->PMC_SR & (0x01u << 3)));															// wait for the Master Clock to be ready
 }
 
 
@@ -190,10 +228,10 @@ void PS_switch_FastRC_to_XTAL(void)
 */
 void PS_switch_FastRC_to_SLCK(void)
 {
-	PMC->PMC_MCKR = 0; // Master Clock Source = Slow Clock
-	while(!(PMC->PMC_SR & (0x01u << 3))); // wait for the Master Clock to be ready
+	PMC->PMC_MCKR = 0;																// Master Clock Source = Slow Clock
+	while(!(PMC->PMC_SR & (0x01u << 3)));											// wait for the Master Clock to be ready
 	
-	PMC->CKGR_MOR = CKGR_MOR_PASSWORD; // the Main Crystal Oscillator and FastRC Oscillator are disabled
+	PMC->CKGR_MOR = CKGR_MOR_PASSWORD;												// the Main Crystal Oscillator and FastRC Oscillator are disabled
 }
 
 
@@ -202,7 +240,7 @@ void PS_switch_FastRC_to_SLCK(void)
 */
 void PS_Brownout_Detector_enable(void)
 {
-	SUPC->SUPC_MR = (SUPC->SUPC_MR | (0xA5 << 24)) & ~(0x01u << 13); // KEY 0xA5; BODDIS 0
+	SUPC->SUPC_MR = (SUPC->SUPC_MR | (0xA5 << 24)) & ~(0x01u << 13);				// KEY 0xA5; BODDIS 0
 }
 
 
@@ -211,7 +249,7 @@ void PS_Brownout_Detector_enable(void)
 */
 void PS_Brownout_Detector_disable(void)
 {
-	SUPC->SUPC_MR |= (0xA5 << 24) | (0x01u << 13); // KEY 0xA5; BODDIS 1
+	SUPC->SUPC_MR |= (0xA5 << 24) | (0x01u << 13);									// KEY 0xA5; BODDIS 1
 }
 
 
