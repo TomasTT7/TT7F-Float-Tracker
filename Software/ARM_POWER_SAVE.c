@@ -102,7 +102,12 @@
 		64MHz = 128MHz / 2
 		
 		MCK		XTAL	MULA	DIVA	PRES
+		1MHz	12MHz	15		3		6
+		4MHz	12MHz	15		3		4
+		12MHz	12MHz	15		2		3
+		16MHz	12MHz	15		3		2
 		64MHz	12MHz	31		3		1
+		1MHz	16MHz	11		3		6
 		4MHz	16MHz	11		3		4
 		12MHz	16MHz	11		2		3
 		16MHz	16MHz	11		3		2
@@ -202,9 +207,17 @@ void PS_switch_MCK_to_FastRC(uint32_t moscrcf, uint32_t pres)
 
 
 /*
-	
+	PRES: Processor Clock Prescaler
+		0		CLK_1			Selected clock
+		1		CLK_2			Selected clock divided by 2
+		2		CLK_4			Selected clock divided by 4
+		3		CLK_8			Selected clock divided by 8
+		4		CLK_16			Selected clock divided by 16
+		5		CLK_32			Selected clock divided by 32
+		6		CLK_64			Selected clock divided by 64
+		7		CLK_3			Selected clock divided by 3
 */
-void PS_switch_FastRC_to_XTAL(void)
+void PS_switch_FastRC_to_XTAL(uint32_t pres)
 {
 	// Initialize main oscillator
 	if(!(PMC->CKGR_MOR & (1 << 24)))					// IF the Main On-Chip RC Oscillator is selected (the Main Crystal Oscillator is not selected).
@@ -217,9 +230,13 @@ void PS_switch_FastRC_to_XTAL(void)
 	// Switch to 3-20MHz Xtal oscillator
 	PMC->CKGR_MOR = CKGR_MOR_PASSWORD | (0x08u << 8) | (0x01u << 3) | (0x01u << 0) | (0x01u << 24); // the Main Crystal Oscillator is selected
 	while(!(PMC->PMC_SR & (0x01u << 16)));															// wait for the Main Oscillator to be selected
+		
+	// Switch to main clock
+	PMC->PMC_MCKR = (PMC->PMC_MCKR & (uint32_t)~(0x07u << 4)) | (pres << 4);
+	while(!(PMC->PMC_SR & (0x01u << 3)));
 	
-	PMC->PMC_MCKR = (PMC->PMC_MCKR & ~(uint32_t)(0x03u << 0)) | (0x01u << 0);						// Master Clock Source = Main Clock
-	while(!(PMC->PMC_SR & (0x01u << 3)));															// wait for the Master Clock to be ready
+	PMC->PMC_MCKR = (PMC->PMC_MCKR & (uint32_t)~(0x03u << 0)) | (0x01u << 0);
+	while(!(PMC->PMC_SR & (0x01u << 3)));
 }
 
 

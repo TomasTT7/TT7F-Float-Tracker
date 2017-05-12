@@ -57,7 +57,7 @@ PMC_PCER1
 void PS_SystemInit(uint8_t mula, uint8_t diva, uint8_t pres);
 void PS_FLASH_init(void);
 void PS_switch_MCK_to_FastRC(uint32_t moscrcf, uint32_t pres);			// moscrcf 0 - 4MHz, 1 - 8MHz, 2 - 12MHz
-void PS_switch_FastRC_to_XTAL(void);
+void PS_switch_FastRC_to_XTAL(uint32_t pres);
 void PS_switch_FastRC_to_SLCK(void);
 void PS_Brownout_Detector_enable(void);
 void PS_Brownout_Detector_disable(void);
