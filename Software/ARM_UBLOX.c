@@ -5,7 +5,7 @@
  *  Author: Tomy2
  */ 
 
-#include "sam3s8b.h"
+#include "sam.h"
 #include "ARM_UBLOX.h"
 #include "ARM_UART.h"
 #include "ARM_DELAY.h"
@@ -684,6 +684,7 @@ void UBLOX_parse_0107(volatile uint8_t *buffer)
 			
 			// FIX
 			GPSfix = buffer[26];
+			GPSfix_0107 = buffer[27] & 0x01;
 			
 			// POWER SAVE MODE STATE
 			GPSpowersavemodestate = (buffer[27] >> 2) & 0x07;
@@ -1293,7 +1294,7 @@ uint32_t UBLOX_construct_telemetry_NMEA(uint8_t *buffer, uint32_t sequence)
 	// ADC READINGS
 	uint32_t AD3 = ((uint32_t)AD3data * 3300) / 4096;									// converting raw ADC reading to mV
 	uint32_t AD9 = ((uint32_t)AD9data * 6600) / 4096;									// converting raw ADC reading to mV
-	float temperatureF1 = (float)AD15data * 0.30402 - 274.896 + TEMP_OFFSET;				// converting raw ADC reading to °C
+	float temperatureF1 = (float)AD15data * 0.30402 - 274.896 + TEMP_OFFSET;			// converting raw ADC reading to °C
 	float temperatureF2 = (float)Si4060Temp * 0.222 - 297;								// converting raw ADC reading to °C
 	sequence = ASCII_16bit_transmit((uint16_t)AD3, buffer, sequence);
 	buffer[sequence++] = ',';
@@ -1343,4 +1344,43 @@ void UBLOX_powersave_mode_init(uint8_t * mode)
 	UBLOX_request_UBX(setGPSonly, 28, 10, UBLOX_parse_ACK);								// turn off GLONASS (needs to be done for POWERSAVE mode)
 	UBLOX_request_UBX(mode, 52, 10, UBLOX_parse_ACK);									// set up the desired UBX-CFG-PM2 (0x06 0x3B) settings
 	UBLOX_request_UBX(setPowerSaveMode, 10, 10, UBLOX_parse_ACK);						// switch to POWERSAVE mode
+}
+
+
+/*
+	Fills a buffer with ASCII characters returned after polling UBX-MON-VER. Individual bits of information are 0x00 delimited.
+*/
+uint32_t UBLOX_get_version(uint8_t *buffer)
+{
+	UBLOX_send_message(request0A04, 8);													// request UBX-MON-VER
+	
+	UART1_buffer_pointer = 0;															// reset UART1 RX buffer pointer
+	UBLOX_fill_buffer_UBX(GPSbuffer, 104);												// copy the response from UART1_RX_buffer to GPSbuffer
+	
+	if(GPSbuffer[0] == 0xB5 && GPSbuffer[1] == 0x62 && GPSbuffer[2] == 0x0A && GPSbuffer[3] == 0x04)
+	{
+		uint8_t sequence = 0;
+		uint8_t zeroFlag = 0;
+		uint32_t msglen = (GPSbuffer[5] << 8) | GPSbuffer[4];
+		msglen -= 4;
+		
+		for(uint32_t i = 0; i < msglen; i++)
+		{
+			if(GPSbuffer[6 + i] != 0)
+			{
+				buffer[sequence++] = (GPSbuffer[6 + i]);
+				zeroFlag = 0;
+			}else{
+				if(!zeroFlag)
+				{
+					buffer[sequence++] = 0;
+					zeroFlag = 1;
+				}
+			}
+		}
+		
+		return sequence;
+	}else{
+		return 0;
+	}
 }
