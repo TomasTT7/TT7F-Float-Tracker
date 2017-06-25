@@ -14,7 +14,8 @@ Antenna
 	
 Power Supply
 	2x 52x38 solar cells
-	1x 15F supercapacitor
+	1x 15F supercapacitor (2.7V max)
+	3.3V board operating voltage
 
 Transmissions
 	APRS
@@ -48,21 +49,18 @@ Transmissions
 		power:			0x28 8.47dBm 30.4mA
 
 Power Saving
-	GPS acquisition:	2MHz PLL
-	RTTY transmission:	2MHz PLL
-	APRS transmission:	16MHz PLL
-	Wait mode:			4MHz RC
-	GPS module mode:	Software Backup
-	TX duration:		~16.0s
+	GPS acquisition:	2MHz PLL (MCU)
+	RTTY transmission:	2MHz PLL (MCU)
+	APRS transmission:	16MHz PLL (MCU)
+	Wait mode:			4MHz RC (MCU)
+	GPS power saving:	Software Backup
+	TX duration:		~16.0s (Vcap > 2500mV)
+						~0.7s (Vcap < 2500mV)
 	Wait mode duration:	~40s (Vcap > 2500mV)
 						~114s (Vcap < 2500mV)
 
 ADC
 	temperature offset:		10.0°C (APRS sends raw ADC data, RTTY uses this offset)
-
-Envelope
-	Mylar shaped balloon:	1.33m
-	Estimated stretch:		~1.9
 
 Constants
 	SPI_SCBR		2		(2MHz MCK - 1MHz SPI, 16MHz MCK - 8MHz SPI)
@@ -70,13 +68,17 @@ Constants
 	SYSTICK_LOAD	2000	(2MHz MCK - 1ms, 16MHz MCK - 0.125ms)
 
 Limits
-	GPS fix:	60 times poll UBX-NAV-PVT at maximum
+	GPS fix:	90 times poll UBX-NAV-PVT at maximum
 	GPS fix:	6 minimum satellites
 	GPS fix:	no fix - TX only APRS ambiguous position message
 	GPS fix:	ok fix - TX APRS and RTTY
 	Vsolar:		none
 	Vcap:		>2500mV TX RTTY and APRS in ~1 minute cycles
 				<2500mV only TX APRS in ~2 minute cycles
+
+Envelope
+	Mylar shaped balloon:	1.33m
+	Estimated stretch:		~1.9
 */
 
 
@@ -320,7 +322,7 @@ int main(void)
 			
 			fixCount++;
 			
-			if(fixCount > 60)														// if taking too long reset and re-initialize GPS module
+			if(fixCount > 90)														// if taking too long reset and re-initialize GPS module
 			{
 				LED_PB5_blink(5);													// signal GPS module reset
 				SysTick_delay_ms(100);
