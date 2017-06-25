@@ -664,6 +664,9 @@ void APRS_comment_altitude(uint8_t *buffer, uint32_t alt)
 	State after MCU reset:
 		backlog_step		78
 		backlog_step_count	3
+	
+	In case of ATSAM3S4:		EEFC_read_bytes(0x00430100 + (256 * backlog_tx_pointer), 28, backlog_buffer);
+	In case of ATSAM3S8:		EEFC_read_bytes(0x00470100 + (256 * backlog_tx_pointer), 28, backlog_buffer);
 */
 void APRS_comment_backlog(uint8_t *buffer)
 {
@@ -757,6 +760,10 @@ void APRS_encode_backlog(uint8_t *buffer)
 	
 	This specific page selection is intended for SAM3S8B and its one plane 512kB flash memory.
 	In case of using a different MCU (SAM3S4B for example) the page numbering has to be adjusted!
+	
+	ATSAM3S4 - one plane of 256kB, 1024 pages of 256 bytes
+		page	768			0x00430000					backlog pointer		written every 1 hour (flash endurance min 416 days)
+		pages	769-1009	0x00430100-0x0043F100		240 backlogs		each written every 240 hours (flash endurance min 100000 days)
 */
 void APRS_store_backlog(void)
 {
@@ -945,10 +952,6 @@ void APRS_packet_construct(uint8_t *buffer)
 		
 		// SSID
 		buffer[num++] = 0b00110010;								// 0b0HRRSSID (H - 'has been repeated' bit, RR - reserved '11', SSID - 0-15)
-	}
-	else														// no path
-	{
-		
 	}
 	
 	
