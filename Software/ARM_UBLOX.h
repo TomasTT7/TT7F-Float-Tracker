@@ -259,6 +259,19 @@ extern uint32_t GPS_NMEA_latitude_dec_L;						// LAST valid value (in case of lo
 extern uint16_t GPS_NMEA_longitude_int_L;						// LAST valid value (in case of lost FIX)
 extern uint32_t GPS_NMEA_longitude_dec_L;						// LAST valid value (in case of lost FIX)
 
+extern uint32_t SSDVimages;										// number of transmitted SSDV images since power up
+extern uint32_t SSDVstatus;										// status of last SSDV attempt
+/*
+	SSDVstatus
+		S		failed to communicate/exit standby
+		V		failed communication/wrong version
+		P		failed enter PREVIEW
+		C		failed enter CAPTURE
+		D		failed to sample data
+		L		sampled image exceeded buffer size
+		E		failed to enter standby on exit
+*/
+
 
 // FUNCTIONS
 uint16_t crc_xmodem_update(uint16_t crc, uint8_t data);

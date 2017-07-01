@@ -1059,7 +1059,7 @@ void UBLOX_process_ZDA(uint8_t *buffer)
 	Function to construct a telemetry string according to UKHAS specification. It uses decimal degrees format for Latitude and Longitude.
 	
 	$$CALLSIGN,sentence_id,time,latitude,longitude,altitude,satellites,fix,solar panel voltage,battery voltage,SAM3S temperature,Si4060 temperature,error*CHECKSUM\n
-	$$$$TT7F1,1,20:31:15,49.49171,18.22271,1131,11,3,2048,4120,15,15, *0C5D\n
+	$$$$TT7F,1,20:31:15,49.49171,18.22271,1131,11,3,2048,4120,15,15, *0C5D\n
 	
 	Checksum is calculated on bytes between the last dollar sign '$' and the asterisk '*' using CRC_XMODEM_UPDATE function.
 	The telemetry string must end with the new line '\n' character.
@@ -1144,17 +1144,17 @@ uint32_t UBLOX_construct_telemetry_UBX(uint8_t *buffer, uint32_t sequence)
 	buffer[sequence++] = ',';
 	
 	// GPS FIX
-	buffer[sequence++] = GPSfix + '0';
-	buffer[sequence++] = ',';
+	//buffer[sequence++] = GPSfix + '0';
+	//buffer[sequence++] = ',';
 	
 	// POWER SAVE / CONTINUOUS MODE
-	buffer[sequence++] = GPSpowersavemodestate + '0';
-	buffer[sequence++] = ',';
+	//buffer[sequence++] = GPSpowersavemodestate + '0';
+	//buffer[sequence++] = ',';
 	
 	// ADC READINGS
 	uint32_t AD3 = ((uint32_t)AD3data * 3300) / 4096;									// converting raw ADC reading to mV
 	uint32_t AD9 = ((uint32_t)AD9data * 6600) / 4096;									// converting raw ADC reading to mV
-	float temperatureF1 = (float)AD15data * 0.30402 - 274.896 + TEMP_OFFSET;			// converting raw ADC reading to °C
+	float temperatureF1 = (float)AD15data * 0.30402 - 273.15 + TEMP_OFFSET;				// converting raw ADC reading to °C
 	float temperatureF2 = (float)Si4060Temp * 0.222 - 297;								// converting raw ADC reading to °C
 	sequence = ASCII_16bit_transmit((uint16_t)AD3, buffer, sequence);
 	buffer[sequence++] = ',';
@@ -1167,13 +1167,18 @@ uint32_t UBLOX_construct_telemetry_UBX(uint8_t *buffer, uint32_t sequence)
 	sequence = ASCII_16bit_transmit((uint16_t)abs(temperatureF2), buffer, sequence);
 	buffer[sequence++] = ',';
 	
+	// SSDV IMAGE COUNT
+	sequence = ASCII_32bit_transmit(SSDVimages, buffer, sequence);
+	buffer[sequence++] = ',';
+	buffer[sequence++] = SSDVstatus;
+	
 	// ERROR BITFIELD
-	if(GPSnavigation != 6) GPS_UBX_error_bitfield |= (1 << 6);							// check whether the module is in AIRBORNE MODE
-	if(GPS_UBX_error_bitfield == 0b01111111) GPS_UBX_error_bitfield = 0b01011111;
-	if(GPS_UBX_error_bitfield == 0b00101100) GPS_UBX_error_bitfield = 0b01001100;
-	if(GPS_UBX_error_bitfield == 0b00101010) GPS_UBX_error_bitfield = 0b01001010;
-	if(GPS_UBX_error_bitfield == 0b00100100) GPS_UBX_error_bitfield = 0b01000100;
-	buffer[sequence++] = GPS_UBX_error_bitfield;
+	//if(GPSnavigation != 6) GPS_UBX_error_bitfield |= (1 << 6);							// check whether the module is in AIRBORNE MODE
+	//if(GPS_UBX_error_bitfield == 0b01111111) GPS_UBX_error_bitfield = 0b01011111;
+	//if(GPS_UBX_error_bitfield == 0b00101100) GPS_UBX_error_bitfield = 0b01001100;
+	//if(GPS_UBX_error_bitfield == 0b00101010) GPS_UBX_error_bitfield = 0b01001010;
+	//if(GPS_UBX_error_bitfield == 0b00100100) GPS_UBX_error_bitfield = 0b01000100;
+	//buffer[sequence++] = GPS_UBX_error_bitfield;
 	
 	// CHECKSUM
 	uint16_t crc = CRC16_checksum(buffer, sequence, TELEMETRY_SYNC_BYTES);
@@ -1183,7 +1188,7 @@ uint32_t UBLOX_construct_telemetry_UBX(uint8_t *buffer, uint32_t sequence)
 	// NEW LINE
 	buffer[sequence++] = 0x0A;
 	
-	GPSnavigation = 0;																	// reset the variable ahead of another telemetry round
+	//GPSnavigation = 0;																	// reset the variable ahead of another telemetry round
 	telemetry_len = sequence;															// save the telemetry length to a global variable
 	GPS_UBX_error_bitfield = 0b00100000;												// reset the bitfield ahead of another telemetry round
 	
@@ -1284,8 +1289,8 @@ uint32_t UBLOX_construct_telemetry_NMEA(uint8_t *buffer, uint32_t sequence)
 	buffer[sequence++] = ',';
 	
 	// GPS FIX
-	buffer[sequence++] = GPSfix + '0';
-	buffer[sequence++] = ',';
+	//buffer[sequence++] = GPSfix + '0';
+	//buffer[sequence++] = ',';
 	
 	// POWER SAVE / CONTINUOUS MODE
 	//buffer[sequence++] = GPSpowersavemodestate + '0';
@@ -1294,8 +1299,8 @@ uint32_t UBLOX_construct_telemetry_NMEA(uint8_t *buffer, uint32_t sequence)
 	// ADC READINGS
 	uint32_t AD3 = ((uint32_t)AD3data * 3300) / 4096;									// converting raw ADC reading to mV
 	uint32_t AD9 = ((uint32_t)AD9data * 6600) / 4096;									// converting raw ADC reading to mV
-	float temperatureF1 = (float)AD15data * 0.30402 - 274.896 + TEMP_OFFSET;			// converting raw ADC reading to °C
-	float temperatureF2 = (float)Si4060Temp * 0.222 - 297;								// converting raw ADC reading to °C
+	float temperatureF1 = (float)AD15data * 0.30402 - 273.15 + TEMP_OFFSET;				// converting raw ADC reading to °C
+	float temperatureF2 = (float)Si4060Temp * 0.222 - 297.0;							// converting raw ADC reading to °C
 	sequence = ASCII_16bit_transmit((uint16_t)AD3, buffer, sequence);
 	buffer[sequence++] = ',';
 	sequence = ASCII_16bit_transmit((uint16_t)AD9, buffer, sequence);
@@ -1305,16 +1310,16 @@ uint32_t UBLOX_construct_telemetry_NMEA(uint8_t *buffer, uint32_t sequence)
 	buffer[sequence++] = ',';
 	if(temperatureF2 < 0) buffer[sequence++] = '-';
 	sequence = ASCII_16bit_transmit((uint16_t)abs(temperatureF2), buffer, sequence);
-	buffer[sequence++] = ',';
+	//buffer[sequence++] = ',';
 	
 	// ERROR BITFIELD
-	if(GPSfix == 0) GPS_NMEA_error_bitfield |= (1 << 4);
-	if(GPSnavigation != 6) GPS_NMEA_error_bitfield |= (1 << 6);
-	if(GPS_NMEA_error_bitfield == 0b01111111) GPS_NMEA_error_bitfield = 0b01011111;
-	if(GPS_NMEA_error_bitfield == 0b00101100) GPS_NMEA_error_bitfield = 0b01001100;
-	if(GPS_NMEA_error_bitfield == 0b00101010) GPS_NMEA_error_bitfield = 0b01001010;
-	if(GPS_NMEA_error_bitfield == 0b00100100) GPS_NMEA_error_bitfield = 0b01000100;
-	buffer[sequence++] = GPS_NMEA_error_bitfield;
+	//if(GPSfix == 0) GPS_NMEA_error_bitfield |= (1 << 4);
+	//if(GPSnavigation != 6) GPS_NMEA_error_bitfield |= (1 << 6);
+	//if(GPS_NMEA_error_bitfield == 0b01111111) GPS_NMEA_error_bitfield = 0b01011111;
+	//if(GPS_NMEA_error_bitfield == 0b00101100) GPS_NMEA_error_bitfield = 0b01001100;
+	//if(GPS_NMEA_error_bitfield == 0b00101010) GPS_NMEA_error_bitfield = 0b01001010;
+	//if(GPS_NMEA_error_bitfield == 0b00100100) GPS_NMEA_error_bitfield = 0b01000100;
+	//buffer[sequence++] = GPS_NMEA_error_bitfield;
 	
 	// CHECKSUM
 	uint16_t crc = CRC16_checksum(buffer, sequence, TELEMETRY_SYNC_BYTES);
@@ -1324,7 +1329,7 @@ uint32_t UBLOX_construct_telemetry_NMEA(uint8_t *buffer, uint32_t sequence)
 	// NEW LINE
 	buffer[sequence++] = 0x0A;
 	
-	GPSnavigation = 0;																	// reset the variable ahead of another telemetry round
+	//GPSnavigation = 0;																	// reset the variable ahead of another telemetry round
 	telemetry_len = sequence;															// save the telemetry length to a global variable
 	GPS_NMEA_error_bitfield = 0b00100000;												// reset the bitfield ahead of another telemetry round
 	
