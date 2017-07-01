@@ -13,7 +13,7 @@ Antenna
 	2m dipole (0.013 guitar string, 2x 492mm)
 	
 Power Supply
-	2x 52x38 solar cells
+	2x 52x38 solar cells (series at 0° to ground)
 	1x 15F supercapacitor (2.7V max)
 	3.3V board operating voltage
 
@@ -262,8 +262,6 @@ int main(void)
 	
 	while(1)
 	{
-		PS_SystemInit(11, 3, 5);										// MCK: 2MHz PLL
-		
 		ADC_start();
 		AD9data = ADC_sample(9, 100);									// sample battery voltage
 		ADC_stop();
@@ -275,6 +273,7 @@ int main(void)
 		PS_switch_MCK_to_FastRC(0, 0);
 		PS_enter_Wait_Mode(1, 0, 0);									// enable wake up on RTT and enter wait mode
 		RTT_off();
+		PS_SystemInit(11, 3, 5);										// MCK: 2MHz PLL
 	}
 	
 	// GPS SETUP
