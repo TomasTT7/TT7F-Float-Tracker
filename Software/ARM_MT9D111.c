@@ -71,7 +71,7 @@ uint8_t MT9D111_test_write(uint8_t address, uint16_t data)
 	
 	220us		at 64MHz		MT9D111 disconnected
 */
-void MT9D111_register_write(uint8_t address, uint16_t data)
+uint8_t MT9D111_register_write(uint8_t address, uint16_t data)
 {
 	TWI0->TWI_CR = TWI_CR_MSEN | TWI_CR_SVDIS;									// set master enable bit and slave mode disable bit
 	TWI0->TWI_MMR = (DEVICE_ADDRESS << 16) | (1 << 8);							// device address ADDR, internal device address length LEN 0/1/2/3
@@ -81,14 +81,18 @@ void MT9D111_register_write(uint8_t address, uint16_t data)
 	uint32_t timeout = TWI_TIMEOUT;
 	TWI0->TWI_THR = data >> 8;													// send the data
 	while (!(TWI0->TWI_SR & TWI_SR_TXRDY) && timeout) timeout--;
+	if(!timeout) return 0;														// signal timeout
 
 	timeout = TWI_TIMEOUT;
 	TWI0->TWI_THR = data;														// send the data
 	while (!(TWI0->TWI_SR & TWI_SR_TXRDY) && timeout) timeout--;
+	if(!timeout) return 0;														// signal timeout
 
 	TWI0->TWI_CR = TWI_CR_STOP;													// send STOP bit
 	timeout = TWI_TIMEOUT;
 	while (!(TWI0->TWI_SR & TWI_SR_TXCOMP) && timeout) timeout--;
+	if(!timeout) return 0;														// signal timeout
+	else return 1;																// signal transmission success
 }
 
 
@@ -302,11 +306,11 @@ void MT9D111_execute_command(uint8_t cmd)
 	
 	duration	~1s
 */
-void MT9D111_standby(void)
+uint32_t MT9D111_standby(void)
 {
 	MT9D111_register_write(WRITE_PAGE, 1);
 	MT9D111_variable_write(1, 3, 1, 3);											// DO STANDBY command
-	MT9D111_wait_for_state(9);													// wait for the camera's STANDBY state
+	uint32_t timeout = MT9D111_wait_for_state(9);								// wait for the camera's STANDBY state
 	MT9D111_register_write(WRITE_PAGE, 0);
 	MT9D111_register_write(0x65, 0xE000);										// bypass PLL
 	MT9D111_register_write(WRITE_PAGE, 1);
@@ -320,6 +324,7 @@ void MT9D111_standby(void)
 	MT9D111_variable_write(10, 113, 0, 0x00);
 	MT9D111_register_write(WRITE_PAGE, 0);
 	MT9D111_register_write(0x0D, 0x0044);										// enter standby state
+	return timeout;
 }
 
 
@@ -329,12 +334,13 @@ void MT9D111_standby(void)
 	
 	duration	~1.25s
 */
-void MT9D111_exit_standby(void)
+uint8_t MT9D111_exit_standby(void)
 {
 	MT9D111_register_write(0x0D, 0x0000);										// de-assert standby
 	MT9D111_register_write(WRITE_PAGE, 1);
 	MT9D111_variable_write(1, 3, 1, 1);											// command DO PREVIEW
-	MT9D111_wait_for_state(3);													// wait for the camera's PREVIEW state
+	if(!MT9D111_wait_for_state(3)) return 0;									// wait for the camera's PREVIEW state, timeout
+	else return 1;																// success
 }
 
 
@@ -419,7 +425,7 @@ uint32_t MT9D111_get_version(void)
 	Mode 1 JPEG (Context B)
 	Function that sets the settings of a desirable JPEG image and transitions to CAPTURE mode.
 */
-void MT9D111_mode_1(void)
+uint32_t MT9D111_mode_1(void)
 {
 	MT9D111_register_write(WRITE_PAGE, 0);
 	MT9D111_register_write(0x20, READ_MODE_B);									// Binning, mirroring, column & row skipping, etc. (0x0000 - default)
@@ -454,6 +460,8 @@ void MT9D111_mode_1(void)
 	MT9D111_variable_write(7, 116, 0, 0b0000001000000011);						// 0x0E(2) FIFO Buffer configuration 1 Context B (DS p.55)
 	MT9D111_variable_write(7, 118, 1, 0b00000001);								// 0x0F(2) FIFO Buffer configuration 2 Context B (DS p.55)
 	
+	MT9D111_variable_write(7, 129, 0, 0x6440);									// Special Effects
+	
 	MT9D111_variable_write(1, 33, 1, NUM_IMAGES);								// Number of frames in still capture mode
 	MT9D111_variable_write(1, 32, 1, 0b00000000);								// Still image, all video options off
 	
@@ -465,7 +473,7 @@ void MT9D111_mode_1(void)
 	MT9D111_variable_write(9, 12, 1, (0b10000000 | qscale_3));					// QSCALE3
 	
 	MT9D111_variable_write(1, 3, 1, 2);											// DO CAPTURE command
-	MT9D111_wait_for_state(7);													// CAPTURE state
+	return MT9D111_wait_for_state(7);											// CAPTURE state
 }
 
 

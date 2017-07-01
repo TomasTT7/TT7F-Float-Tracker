@@ -10,7 +10,7 @@
 #define GO_TO_STANDBY									// comment out to disable
 
 
-#define SSDV_CALLSIGN "TT7S"							// max. 6 characters
+#define SSDV_CALLSIGN "TT7F"							// max. 6 characters
 #define MT9D111_BUFFER_SIZE 45000
 extern uint8_t JPEGbuffer[MT9D111_BUFFER_SIZE];
 
@@ -18,7 +18,7 @@ extern uint8_t JPEGbuffer[MT9D111_BUFFER_SIZE];
 /*
 	How many SSDV packets in between two telemetry strings?
 */
-#define TELEMETRY_EVERY_X_PACKETS 3
+#define TELEMETRY_EVERY_X_PACKETS 5
 
 
 /*
@@ -260,7 +260,7 @@ static uint32_t JPEG_StdHuffmanTbl[384] = {
 
 // Functions
 uint8_t MT9D111_test_write(uint8_t address, uint16_t data);
-void MT9D111_register_write(uint8_t address, uint16_t data);
+uint8_t MT9D111_register_write(uint8_t address, uint16_t data);
 uint16_t MT9D111_register_read(uint8_t address);
 void MT9D111_variable_write(uint8_t driverID, uint8_t offset, uint8_t size, uint16_t val);
 uint16_t MT9D111_variable_read(uint8_t driverID, uint8_t offset, uint8_t size);
@@ -270,15 +270,15 @@ uint32_t MT9D111_wait_for_state(uint8_t state);
 uint32_t MT9D111_get_state(void);
 void MT9D111_reset(void);
 void MT9D111_execute_command(uint8_t cmd);
-void MT9D111_standby(void);
-void MT9D111_exit_standby(void);
+uint32_t MT9D111_standby(void);
+uint8_t MT9D111_exit_standby(void);
 uint32_t MT9D111_get_mode(void);
 void MT9D111_preview_mode(void);
 void MT9D111_capture_mode(void);
 void MT9D111_refresh(void);
 void MT9D111_refresh_mode(void);
 uint32_t MT9D111_get_version(void);
-void MT9D111_mode_1(void);
+uint32_t MT9D111_mode_1(void);
 void MT9D111_mode_2(void);
 uint32_t MT9D111_get_image(void);
 
