@@ -7,11 +7,11 @@ PCB:	F3 v1.4
 	UBLOX MAX-M8Q
 	Si4060 (434MHz 10dBM CLE matching)
 	TCXO 32MHz
-	...		LTC3105 (Vout 4.2V, Rmppt 91k)
+	LTC3105 (Vout 4.06V, Rmppt 180k)
 	MT9D111 (poor colors)
 
 Antenna
-	...		2m dipole (0.013 guitar string, 2x 492mm)
+	2m dipole (0.013 guitar string, 2x 492mm)
 	
 Power Supply
 	4x 52x38 solar cells (series at 0° to ground)
@@ -31,8 +31,8 @@ Transmissions
 						~~~~~~~~~~~~‚ ¤¦@@àž–n<0x88>š¨v®’<0x88>Šd@c<0x03><0xF0>!0000.00N\00000.00W. 0K%0/5MI6S(K^HW!!$>+a!*31|!$!!#p+30n!!!"|<FCS><FCS>~~~
 		backlog:		every 30 TX cycles (~10 days stored)
 		duration:		0.473-0.68s
-		timing:			once per ~1 minute (Vsolar > 1200mV)
-						once per ~2 minutes (Vsolar < 1200mV)
+		timing:			once per ~1 minute (Vsolar > 1600mV && Vbattery > 3000mV)
+						once per ~2 minutes (Vsolar < 1600mV || Vbattery < 3000mV)
 		limit:			no limit
 		power:			0x2D 14.56dBm 35.5mA
 		
@@ -45,9 +45,9 @@ Transmissions
 		example:		<0x00><0x00><0x00><0x00><0x00>$$$$TT7F2,13,21:13:27,20170629,49.46872,18.15082,395,6,781,3931,21,14,0,S*1F42\n
 						$$CALLSIGN,id,time,date,latitude,longitude,altitude,satellites,solar mV,battery mV,SAM3S °C,Si4060 °C,SSDV images,SSDV status*CHECKSUM\n
 		duration:		6.25s (OOK) + ~2.9s (80 bytes)
-		timing:			once per ~2 minutes (Vsolar > 1200mV)
-		limit:			Vsolar > 1200mV
-						Vbattery > 3100mV
+		timing:			once per ~2 minutes (Vsolar > 1600mV && Vbattery > 3000mV)
+		limit:			Vsolar > 1600mV
+						Vbattery > 3000mV
 		power:			0x2D 12.43dBm 17.0mA
 		
 	SSDV
@@ -56,29 +56,33 @@ Transmissions
 		baud:			300
 		shift:			850Hz
 		mode:			8n2
-		duration:		7.5s (initial OOK), 9.4s (packet), 10-15min (image)
+		duration:		2.5s (initial OOK), 9.4s (packet), 10-15min (image)
 		timing:			at the top of the hour and on the half hour (GPSminute checked)
 						interleaved with RTTY and APRS after every 5 packets (~1 minute)
-		limit:			Vsolar > 1200mV
-						Vbattery > 3100mV
+		limit:			Vsolar > 1600mV
+						Vbattery > 3000mV
 		power:			0x2D 12.43dBm 17.0mA
-		resolution:		
-		color setting:	
+		resolution:		320x240
+		quality:		50
+		gamma:			0.45
+		contrast:		125%
+		color format:	YCbCr422
+		drivers:		Auto White Balance, Auto Focus
 
 Power Saving
 	GPS acquisition:	2MHz PLL (MCU)
 	RTTY transmission:	2MHz PLL (MCU)
-	PWM clock:			...
+	PWM clock:			10.7MHz
 	SSDV acquisition:	64MHz PLL (MCU)
-	SSDV transmission:	...
+	SSDV transmission:	2MHz PLL (MCU)
 	APRS transmission:	16MHz PLL (MCU)
 	Wait mode:			4MHz RC (MCU)
-	GPS power saving:	...		Software Backup
-	TX duration:		~3.6s (Vsolar > 1200mV & Vbattery > 3100mV)
-						~0.7s (Vsolar < 1200mV)
+	GPS power saving:	Software Backup
+	TX duration:		~9.2s (Vsolar > 1600mV && Vbattery > 3000mV)
+						~0.7s (Vsolar < 1600mV || Vbattery < 3000mV)
 						10-15min (SSDV)
-	Wait mode duration:	~55s (Vsolar > 1200mV)
-						~116s (Vsolar < 1200mV)
+	Wait mode duration:	~55s (Vsolar > 1600mV && Vbattery > 3000mV)
+						~116s (Vsolar < 1600mV || Vbattery < 3000mV)
 
 ADC
 	temperature offset:		24.0°C (APRS sends raw ADC data, RTTY uses this offset)
@@ -93,9 +97,11 @@ Limits
 	GPS fix:	6 minimum satellites
 	GPS fix:	no fix - TX only APRS ambiguous position message
 	GPS fix:	ok fix - TX APRS, RTTY and SSDV
-	Vsolar:		<1200mV only APRS in ~2 minute cycle
-	Vbattery:	...		>3100mV TX RTTY and APRS in ~1 minute cycles
-				...		<3100mV only TX APRS in ~2 minute cycles
+	Vsolar:		> 1600mV TX RTTY, SSDV and APRS
+				< 1600mV only APRS in ~2 minute cycle
+	Vbattery:	> 3000mV TX RTTY, SSDV and APRS
+				< 3000mV only TX APRS in ~2 minute cycles
+	Watchdog:	16s
 
 Envelope
 	Mylar shaped balloon:	1.84m
@@ -293,7 +299,7 @@ int main(void)
     // POWER-UP
     EEFC_setup(0, 2, 0, 0);												// Flash Wait State 2 + 1 (max. 64MHz)
     PS_SystemInit(15, 3, 5);											// MCK: 2MHz PLL
-    WATCHDOG_disable();													// disable WatchDog timer
+	WATCHDOG_enable(4095, 1);											// setup WatchDog with 16s period
     SysTick_delay_init();												// configure the delay timer
     LED_PA0_init();
     LED_PB5_init();
@@ -312,12 +318,15 @@ int main(void)
 	
 	while(1)
 	{
+		// WATCHDOG RESTART
+		WATCHDOG_restart();
+		
 		ADC_start();
 		AD9data = ADC_sample(9, 100);									// sample battery voltage
 		ADC_stop();
 		
 		AD9 = ((uint32_t)AD9data * 6600) / 4096;
-		if(AD9 > 2800) break;											// Battery minimum voltage limit (mV)
+		if(AD9 >= 2800) break;											// Battery minimum voltage limit (mV)
 		
 		RTT_init(1, 0x8000, 0);											// wake up every 1s
 		PS_switch_MCK_to_FastRC(0, 0);
@@ -366,6 +375,9 @@ int main(void)
 		
 		while(1)																	// poll UBX-NAV-PVT until the module has fix (limited)
 		{
+			// WATCHDOG RESTART
+			WATCHDOG_restart();
+			
 			GPSfix = 0;
 			GPSfix_0107 = 0;
 			GPSsats = 0;
@@ -422,7 +434,7 @@ int main(void)
 		uint32_t AD3 = ((uint32_t)AD3data * 3300) / 4096;
 		uint32_t AD9 = ((uint32_t)AD9data * 6600) / 4096;
 		
-		if(AD3 >= 500 && AD9 >= 3000)												// solar panel and battery minimum voltage limit (mV)
+		if(AD3 >= 1600 && AD9 >= 3000)												// solar panel and battery minimum voltage limit (mV)
 		{
 			WaitModeSeconds = 46;													// short cycle, transmit APRS, RTTY and SSDV
 		}else{
@@ -455,8 +467,11 @@ int main(void)
 		if(TXrtty)
 		{
 			telemCount++;
-			telemLen = UBLOX_construct_telemetry_UBX(TXbuffer, 0);				// store the telemetry string in TXbuffer
+			telemLen = UBLOX_construct_telemetry_UBX(TXbuffer, 0);					// store the telemetry string in TXbuffer
 		}
+		
+		// WATCHDOG RESTART
+		WATCHDOG_restart();
 		
 		// CONSTRUCT APRS PACKET
 		APRShour						= GPShour;
@@ -489,7 +504,7 @@ int main(void)
 		APRS_packet_construct(APRSpacket);											// store the packet in APRSpacket
 		
 		// BACKLOG
-		if(cycleCount % 30 == 0) APRS_store_backlog();								// save a new backlog to flash memory every x telemetry strings
+		if((cycleCount % 30) == 0 && GPSfix == 3) APRS_store_backlog();				// save a new backlog to flash memory every x telemetry strings
 		
 		// GEOFENCE
 		GEOFENCE_position(GPS_UBX_latitude_Float, GPS_UBX_longitude_Float);			// choose the right APRS frequency based on current location
@@ -532,6 +547,10 @@ int main(void)
 			SI4060_frequency_deviation(TX_DEVIATION_RTTY);
 			SI4060_power_level(POWER_LEVEL);
 			SI4060_tx_OOK_blips(5, 250, 1000);										// first transmit several blips to announce RTTY transmission
+			
+			// WATCHDOG RESTART
+			WATCHDOG_restart();
+			
 			SI4060_modulation(2, 1);												// FSK, asynchronous
 			SI4060_change_state(0x07);												// TX state
 			TC0_init_RTTY_NORMAL();													// start TimerCounter0 to time baud rate
@@ -544,6 +563,9 @@ int main(void)
 			SI4060_deinit();
 			SPI_deinit();
 		}
+		
+		// WATCHDOG RESTART
+		WATCHDOG_restart();
 		
 		// MT9D111 GET IMAGE
 		uint8_t imageOK = 0;
@@ -574,6 +596,9 @@ int main(void)
 					
 					for(uint8_t i = 0; i < 4; i++)									// allow a few attempts in case of failure
 					{
+						// WATCHDOG RESTART
+						WATCHDOG_restart();
+						
 						LED_PA0_blink(160);											// signal camera will try get an image
 						SysTick_delay_ms(3200);
 						LED_PA0_blink(160);
@@ -588,8 +613,14 @@ int main(void)
 						camTimeout = MT9D111_wait_for_state(3);						// wait for the camera's PREVIEW state
 						if(!camTimeout) {SSDVstatus = 'P'; continue;}				// next attempt if timed out
 						
+						// WATCHDOG RESTART
+						WATCHDOG_restart();
+						
 						camTimeout = MT9D111_mode_1();								// set up camera to take one JPEG
 						if(!camTimeout) {SSDVstatus = 'C'; continue;}				// next attempt if timed out
+						
+						// WATCHDOG RESTART
+						WATCHDOG_restart();
 						
 						// IMAGE SAMPLING
 						camTimeout = 16000000;
@@ -597,6 +628,9 @@ int main(void)
 						if(!camTimeout) {SSDVstatus = 'D'; continue;}						// next attempt if timed out
 						
 						PDC_transfer(JPEGbuffer + len, MT9D111_BUFFER_SIZE - len);	// initialize the PDC (there is not enough time after VSYNC goes HIGH)
+						
+						// WATCHDOG RESTART
+						WATCHDOG_restart();
 						
 						camTimeout = 16000000;
 						while(!(PIOA->PIO_PDSR & (1 << 15)) && camTimeout) camTimeout--;	// wait for the start of a new frame (VSYNC LOW->HIGH)
@@ -633,6 +667,9 @@ int main(void)
 							SSDVstatus = 'L';										// sampled image exceeded buffer size
 						}
 					}
+					
+					// WATCHDOG RESTART
+					WATCHDOG_restart();
 					
 					// CAMERA STANDBY
 					MT9D111_wait_for_state(3);										// wait for the camera's PREVIEW state
@@ -697,6 +734,9 @@ int main(void)
 			
 			while(1)
 			{	
+				// WATCHDOG RESTART
+				WATCHDOG_restart();
+				
 				// INTERLEAVED APRS & RTTY
 				if(packetCount % packetsPerTelem == 0 && packetCount != 0)			// every x packets transmit APRS packet and RTTY telemetry
 				{
@@ -723,6 +763,9 @@ int main(void)
 					
 					while(1)														// poll UBX-NAV-PVT until the module has fix (limited)
 					{
+						// WATCHDOG RESTART
+						WATCHDOG_restart();
+						
 						GPSfix = 0;
 						GPSfix_0107 = 0;
 						GPSsats = 0;
@@ -768,6 +811,9 @@ int main(void)
 						telemLen = UBLOX_construct_telemetry_UBX(TXbuffer, 0);
 					}
 					
+					// WATCHDOG RESTART
+					WATCHDOG_restart();
+					
 					// CONSTRUCT APRS PACKET
 					cycleCount++;
 					
@@ -800,7 +846,7 @@ int main(void)
 					APRS_packet_construct(APRSpacket);								// store the packet in APRSpacket
 					
 					// BACKLOG
-					if(cycleCount % 30 == 0) APRS_store_backlog();					// save a new backlog to flash memory every x telemetry strings
+					if((cycleCount % 30) == 0 && GPSfix == 3) APRS_store_backlog();	// save a new backlog to flash memory every x telemetry strings
 					
 					// GEOFENCE
 					GEOFENCE_position(GPS_UBX_latitude_Float, GPS_UBX_longitude_Float);	// choose the right APRS frequency based on current location
@@ -816,21 +862,21 @@ int main(void)
 					if(interleavedTXaprs)
 					{
 						// FAST MCK
-						PS_switch_MCK_to_FastRC(0, 0);												// MCK: 4MHz internal FastRC
-						PS_SystemInit(15, 3, 2);													// MCK: 16MHz PLL
+						PS_switch_MCK_to_FastRC(0, 0);								// MCK: 4MHz internal FastRC
+						PS_SystemInit(15, 3, 2);									// MCK: 16MHz PLL
 						
 						SPI_init();
 						SI4060_init();
 						SI4060_setup_pins(0x02, 0x04, 0x02, 0x02, 0x00, 0x00);
 						SI4060_frequency_offset(0);
-						SI4060_PA_mode(6, 0);													// Si4460: lower-power applications, Class-E or Square Wave match
-						SI4060_tx_APRS_GFSK_sync();												// transmit the packet using GFSK modulation
+						SI4060_PA_mode(6, 0);										// Si4460: lower-power applications, Class-E or Square Wave match
+						SI4060_tx_APRS_GFSK_sync();									// transmit the packet using GFSK modulation
 						SI4060_deinit();
 						SPI_deinit();
 						
 						// SLOW MCK
-						PS_switch_MCK_to_FastRC(0, 0);												// MCK: 4MHz internal FastRC
-						PS_SystemInit(15, 3, 5);													// MCK: 2MHz PLL
+						PS_switch_MCK_to_FastRC(0, 0);								// MCK: 4MHz internal FastRC
+						PS_SystemInit(15, 3, 5);									// MCK: 2MHz PLL
 					}
 					
 					// RTTY TX
@@ -843,6 +889,10 @@ int main(void)
 					SI4060_frequency_deviation(TX_DEVIATION_RTTY);
 					SI4060_power_level(POWER_LEVEL);
 					SI4060_tx_OOK_blips(5, 250, 250);								// first transmit several blips to announce transmission
+					
+					// WATCHDOG RESTART
+					WATCHDOG_restart();
+					
 					SI4060_modulation(2, 1);										// FSK, asynchronous
 					SI4060_change_state(0x07);										// TX state
 					TC0_init_RTTY_NORMAL();											// start TimerCounter0 to time baud rate
@@ -853,7 +903,10 @@ int main(void)
 					if(interleavedTXrtty)											// if not allowed, continue to next SSDV packet
 					{
 						SI4060_tx_RTTY_string_TC0(TXbuffer, telemLen);
-					}	
+						
+						// WATCHDOG RESTART
+						WATCHDOG_restart();
+					}
 				}
 				
 				// SSDV PACKET
