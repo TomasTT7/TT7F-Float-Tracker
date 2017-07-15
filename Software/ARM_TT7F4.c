@@ -7,7 +7,7 @@ PCB:	F9 v1.5
 	Biwin GM10
 	Si4463 (169MHz 20dBM SQW matching)
 	TCXO 32MHz
-	LTC3105 (Vout 4.06V, Rmppt 180k)
+	LTC3105 (Vout 4.08V, Rmppt 180k)
 
 Antenna
 	2m dipole (0.013 guitar string, 2x 492mm)
@@ -19,7 +19,7 @@ Power Supply
 
 Transmissions
 	APRS
-		callsign:		OK7DMT-1
+		callsign:		OK7DMT-9
 		destination:	APRS
 		path:			WIDE2-1
 		frequency:		Geofence
@@ -135,6 +135,9 @@ uint8_t APRSbitfield										= 0;
 uint8_t APRS_packet_mode									= 0;
 uint8_t APRS_show_alt_B91									= 0;
 uint16_t APRS_packet_size									= 0;
+
+uint8_t APRS_ssid											= SSID;
+char APRS_callsign[6]										= APRS_CALLSIGN;
 
 
 // EEFC ------------------------------------------------------------------------------------------------------------------
@@ -303,7 +306,7 @@ int main(void)
 	// MAIN LOOP
     while(1) 
     {
-        // STATUS LED
+		// STATUS LED
         LED_PB5_blink(5);															// signal start of loop
 		cycleCount++;
 		
