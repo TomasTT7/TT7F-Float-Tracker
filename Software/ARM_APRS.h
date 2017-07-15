@@ -4,7 +4,6 @@
 
 #include "stdint.h"
 
-
 /*
 SSID
 	-0 Your primary station usually fixed and message capable
@@ -24,13 +23,14 @@ SSID
 	-14 Truckers or generally full time drivers
 	-15 generic additional station, digi, mobile, wx, etc
 */
+#define APRS_CALLSIGN "OK7DMT"							// 6 characters (fill the rest with 'space')
 #define SSID 11											// APRS source address SSID
 #define DSSID 0											// APRS destination address SSID
 #define APRSFLAGS 12									// number of 0x7E FLAGS in the beginning of the APRS message
 #define APRS_BUFFER_SIZE 350
 
-
-static char APRS_callsign[6] = "OK7DMT";				// 6 characters (fill the rest with 'space')
+extern uint8_t APRS_ssid;
+extern char APRS_callsign[6];
 static char APRS_destination[6] = "APRS  ";				// 6 characters (fill the rest with 'space')
 
 /*
@@ -38,6 +38,7 @@ static char APRS_destination[6] = "APRS  ";				// 6 characters (fill the rest wi
 	1		WIDE1-1
 	2		WIDE2-1
 	3		WIDE1-1, WIDE2-1
+	4		WIDE2-2
 */
 extern uint8_t APRS_send_path;							
 
@@ -116,6 +117,7 @@ void APRS_comment_backlog(uint8_t *buffer);
 void APRS_encode_backlog(uint8_t *buffer);
 void APRS_store_backlog(void);
 void APRS_packet_construct(uint8_t *buffer);
+void APRS_fill_callsign(char *callsign, uint8_t ssid);
 
 
 #endif // ARM_APRS_H_

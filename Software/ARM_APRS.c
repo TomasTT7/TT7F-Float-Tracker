@@ -689,7 +689,7 @@ void APRS_comment_backlog(uint8_t *buffer)
 	if(backlog_buffer[0] != 0xFF && backlog_buffer[1] != 0xFF)							// don't attach empty backlogs
 	{
 		for(uint8_t i = 0; i < 25; i++) buffer[num++] = backlog_buffer[i];				// insert the backlog in the APRS packet
-	}	
+	}
 }
 
 
@@ -726,9 +726,9 @@ void APRS_encode_backlog(uint8_t *buffer)
 	buffer[3] = APRShour + 33;																		// Hour
 	buffer[4] = APRSminute + 33;																	// Minute
 	buffer[5] = latitude / 753571 + 33;																// Latitude
-	buffer[6] = (latitude % 753571) / 8281 + 33; 
+	buffer[6] = (latitude % 753571) / 8281 + 33;
 	buffer[7] = ((latitude % 753571) % 8281) / 91 + 33;
-	buffer[8] = ((latitude % 753571) % 8281) % 91 + 33; 
+	buffer[8] = ((latitude % 753571) % 8281) % 91 + 33;
 	buffer[9] = longitude / 753571 + 33;															// Longitude
 	buffer[10] = (longitude % 753571) / 8281 + 33;
 	buffer[11] = ((longitude % 753571) % 8281) / 91 + 33;
@@ -775,10 +775,10 @@ void APRS_store_backlog(void)
 	EEFC_read_bytes(0x00470000, 4, pointer_buffer);							// get the number of the page to write to
 	
 	backlog_store_pointer = (pointer_buffer[0] << 24) |
-							(pointer_buffer[1] << 16 |
-							(pointer_buffer[2] << 8) |
-							(pointer_buffer[3] << 0));
-							
+	(pointer_buffer[1] << 16 |
+	(pointer_buffer[2] << 8) |
+	(pointer_buffer[3] << 0));
+	
 	if(backlog_store_pointer > 239) backlog_store_pointer = 0;				// the pointer reads 255 after initial programming
 	
 	EEFC_write_page(backlog_buffer, 28, 1793 + backlog_store_pointer);		// store the backlog in the flash memory
@@ -891,7 +891,7 @@ void APRS_packet_construct(uint8_t *buffer)
 	}
 	
 	// SSID to specify an APRS symbol (11 - balloon)
-	buffer[num++] = 0b00110000 | SSID;							// 0b0CRRSSID (C - command/response bit '1', RR - reserved '11', SSID - 0-15)
+	buffer[num++] = 0b00110000 | (APRS_ssid & 0x0F);							// 0b0CRRSSID (C - command/response bit '1', RR - reserved '11', SSID - 0-15)
 	
 	
 	// Path
@@ -990,19 +990,19 @@ void APRS_packet_construct(uint8_t *buffer)
 	}
 	else if(APRS_packet_mode == 2)
 	{
-		APRS_telemetry_PARM(buffer, "Vsol,Vbatt,Tcpu,Ttx,Sats,Nav,Fix", "OK7DMT-11");
+		APRS_telemetry_PARM(buffer, "Vsol,Vbatt,Tcpu,Ttx,Sats,Nav,Fix,Img,PSM", "OK7DMT-12");
 	}
 	else if(APRS_packet_mode == 3)
 	{
-		APRS_telemetry_UNIT(buffer, "V,V,C,C", "OK7DMT-11");
+		APRS_telemetry_UNIT(buffer, "V,V,C,C", "OK7DMT-12");
 	}
 	else if(APRS_packet_mode == 4)
 	{
-		APRS_telemetry_EQNS(buffer, "0,0.0008,0,0,0.0016,0,0,0.304,-263,0,0.222,-297,0,1,0", "OK7DMT-11");
+		APRS_telemetry_EQNS(buffer, "0,0.0008,0,0,0.0016,0,0,0.304,-263,0,0.222,-297,0,1,0", "OK7DMT-12");
 	}
 	else if(APRS_packet_mode == 5)
 	{
-		APRS_telemetry_BITS(buffer, "11111111,TT7F High Altitude Balloon", "OK7DMT-11");
+		APRS_telemetry_BITS(buffer, "11111111,TT7F2 High Altitude Balloon SSDV 434.319MHz", "OK7DMT-12");
 	}
 	else if(APRS_packet_mode == 6)
 	{
@@ -1043,4 +1043,18 @@ void APRS_packet_construct(uint8_t *buffer)
 	buffer[num++] = 0x7E;
 	
 	APRS_packet_size = num;										// packet length
+}
+
+
+/*
+	Allows changing callsign and ssid between transmissions.
+*/
+void APRS_fill_callsign(char *callsign, uint8_t ssid)
+{
+	for(uint8_t i = 0; i < 6; i++)
+	{
+		APRS_callsign[i] = callsign[i];
+	}
+	
+	APRS_ssid = ssid & 0x0F;
 }
