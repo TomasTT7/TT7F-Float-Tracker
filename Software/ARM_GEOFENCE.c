@@ -105,7 +105,7 @@ int32_t pointInPolygonF(int32_t polyCorners, float * polygon, float latitude, fl
 	NO AIRBORNE APRS:
 						France
 						Latvia
-						Romania
+						Romania				X
 						United Kingdom
 	
 	Expected input FLOAT for latitude and longitude as in GPS_UBX_latitude_Float and GPS_UBX_longitude_Float.
@@ -121,8 +121,8 @@ void GEOFENCE_position(float latitude, float longitude)
 		if(latitude > 0.0)
 		{
 			if(pointInPolygonF(9, UKF, latitude, longitude) == 1)				{GEOFENCE_no_tx = 1;}
-			else if(pointInPolygonF(8, FranceF, latitude, longitude) == 1)		{GEOFENCE_no_tx = 1;}
-			else if(pointInPolygonF(6, RomaniaF, latitude, longitude) == 1)		{GEOFENCE_no_tx = 1;}
+			//else if(pointInPolygonF(8, FranceF, latitude, longitude) == 1)		{GEOFENCE_no_tx = 1;}
+			//else if(pointInPolygonF(6, RomaniaF, latitude, longitude) == 1)		{GEOFENCE_no_tx = 1;}
 			else if(pointInPolygonF(10, LatviaF, latitude, longitude) == 1)		{GEOFENCE_no_tx = 1;}
 			else																{GEOFENCE_no_tx = 0; GEOFENCE_APRS_frequency = 144800000;}
 		}
@@ -163,9 +163,10 @@ void GEOFENCE_position(float latitude, float longitude)
 		// S 1/2
 		if(latitude > 19.2)
 		{
-			if(pointInPolygonF(10, ChinaF, latitude, longitude) == 1)			{GEOFENCE_no_tx = 0; GEOFENCE_APRS_frequency = 144640000;}
-			else if(pointInPolygonF(5, JapanF, latitude, longitude) == 1)		{GEOFENCE_no_tx = 0; GEOFENCE_APRS_frequency = 144660000;}
-			else if(pointInPolygonF(4, South_KoreaF, latitude, longitude) == 1)	{GEOFENCE_no_tx = 0; GEOFENCE_APRS_frequency = 144620000;}
+			if(pointInPolygonF(12, ChinaF, latitude, longitude) == 1)			{GEOFENCE_no_tx = 0; GEOFENCE_APRS_frequency = 144640000;}
+			else if(pointInPolygonF(7, JapanF, latitude, longitude) == 1)		{GEOFENCE_no_tx = 0; GEOFENCE_APRS_frequency = 144660000;}
+			else if(pointInPolygonF(5, South_KoreaF, latitude, longitude) == 1)	{GEOFENCE_no_tx = 0; GEOFENCE_APRS_frequency = 144620000;}
+			else if(pointInPolygonF(5, ThailandF, latitude, longitude) == 1)	{GEOFENCE_no_tx = 0; GEOFENCE_APRS_frequency = 145525000;}
 			else																{GEOFENCE_no_tx = 0; GEOFENCE_APRS_frequency = 144800000;}
 		}
 		
@@ -174,7 +175,7 @@ void GEOFENCE_position(float latitude, float longitude)
 		{
 			if(pointInPolygonF(6, AustraliaF, latitude, longitude) == 1)		{GEOFENCE_no_tx = 0; GEOFENCE_APRS_frequency = 145175000;}
 			else if(pointInPolygonF(5, New_ZealandF, latitude, longitude) == 1)	{GEOFENCE_no_tx = 0; GEOFENCE_APRS_frequency = 144575000;}
-			else if(pointInPolygonF(7, ThailandF, latitude, longitude) == 1)	{GEOFENCE_no_tx = 0; GEOFENCE_APRS_frequency = 145525000;}
+			else if(pointInPolygonF(5, ThailandF, latitude, longitude) == 1)	{GEOFENCE_no_tx = 0; GEOFENCE_APRS_frequency = 145525000;}
 			else																{GEOFENCE_no_tx = 0; GEOFENCE_APRS_frequency = 144390000;}
 		}
 	}
