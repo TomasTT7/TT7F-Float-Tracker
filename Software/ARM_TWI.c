@@ -5,7 +5,7 @@
  *  Author: Tomy2
  */ 
 
-#include "sam.h"
+#include "sam3s8b.h"
 #include "ARM_TWI.h"
 
 
@@ -44,7 +44,10 @@ void TWI_init_master(void)
 */
 void TWI_deinit(void)
 {
-	while(!(TWI0->TWI_SR & TWI_SR_TXCOMP));								// wait for the end of transmission
+	uint32_t timeout = TWI_TIMEOUT;
+	
+	while(!(TWI0->TWI_SR & TWI_SR_TXCOMP) && timeout) timeout--;		// wait for the end of transmission
+	
 	TWI0->TWI_CR = TWI_CR_MSDIS;										// master disable
 	PMC->PMC_PCDR0 |= (1 << ID_TWI0);									// disable clock
 	PIOA->PIO_PUER |= PIO_PA3;											// enable pull up
@@ -88,7 +91,7 @@ void TWI_write(uint8_t addr, uint8_t intaddrlen, uint8_t intaddr16, uint8_t inta
 /*
 	General read function. For MT9D111 use dedicated read function in MT9D111 library.
 */
-void TWI_read(uint8_t addr, uint8_t intaddrlen, uint8_t intaddr16, uint8_t intaddr8, uint8_t intaddr0, uint8_t *data, uint8_t datalen)
+uint8_t TWI_read(uint8_t addr, uint8_t intaddrlen, uint8_t intaddr16, uint8_t intaddr8, uint8_t intaddr0, uint8_t *data, uint8_t datalen)
 {
 	uint8_t stop_sent = 0;
 	uint32_t timeout = TWI_TIMEOUT;
@@ -104,7 +107,7 @@ void TWI_read(uint8_t addr, uint8_t intaddrlen, uint8_t intaddr16, uint8_t intad
 	{
 		TWI0->TWI_CR = TWI_CR_START | TWI_CR_STOP;
 		stop_sent = 1;
-		}else{
+	}else{
 		TWI0->TWI_CR = TWI_CR_START;
 		stop_sent = 0;
 	}
@@ -130,4 +133,6 @@ void TWI_read(uint8_t addr, uint8_t intaddrlen, uint8_t intaddr16, uint8_t intad
 
 	while(!(TWI0->TWI_SR & TWI_SR_TXCOMP));
 	TWI0->TWI_SR;														// dummy read in status register
+	
+	return 0; // NEW
 }
