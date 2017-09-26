@@ -33,7 +33,7 @@ GPS_UBX_error_bitfield
 #include "stdint.h"
 
 
-static char RTTY_callsign[] = "TT7F";							// CALLSIGN for the RTTY telemetry string
+static char RTTY_callsign[] = "TT7F6W";							// CALLSIGN for the RTTY telemetry string
 
 #define TELEMETRY_SYNC_BYTES	4								// number of '$' characters at the beginning of the telemetry string
 
@@ -272,7 +272,6 @@ extern uint32_t SSDVstatus;										// status of last SSDV attempt
 		E		failed to enter standby on exit
 */
 
-
 // FUNCTIONS
 uint16_t crc_xmodem_update(uint16_t crc, uint8_t data);
 uint16_t CRC16_checksum(uint8_t *string, uint32_t len, uint32_t start);
@@ -285,10 +284,10 @@ uint32_t ASCII_32bit_LATLON_DECIMAL_transmit(uint32_t number, uint8_t *buffer, u
 void Coords_DEGtoDEC(uint32_t lat_INT, uint32_t lat_DEC, uint32_t lon_INT, uint32_t lon_DEC, uint8_t latNS, uint8_t lonEW);
 
 uint8_t UBLOX_verify_checksum(volatile uint8_t *buffer, uint8_t len);
-void UBLOX_fill_buffer_UBX(uint8_t *buffer, uint8_t len);
-void UBLOX_fill_buffer_NMEA(uint8_t *buffer);
+uint8_t UBLOX_fill_buffer_UBX(uint8_t *buffer, uint8_t len);
+uint8_t UBLOX_fill_buffer_NMEA(uint8_t *buffer);
 void UBLOX_send_message(uint8_t *message, uint8_t len);
-void UBLOX_request_UBX(uint8_t *request, uint8_t len, uint8_t expectlen, void (*parse)(volatile uint8_t*));
+uint8_t UBLOX_request_UBX(uint8_t *request, uint8_t len, uint8_t expectlen, void (*parse)(volatile uint8_t*));
 void UBLOX_parse_0102(volatile uint8_t *buffer);
 void UBLOX_parse_0121(volatile uint8_t *buffer);
 void UBLOX_parse_0106(volatile uint8_t *buffer);

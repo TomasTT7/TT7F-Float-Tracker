@@ -388,22 +388,22 @@ uint8_t UBLOX_verify_checksum(volatile uint8_t *buffer, uint8_t len)
 	Waits for the UART1_RX_buffer[] to be filled with an expected number of bytes
 	and then empties the buffer to a desired buffer for further processing.
 */
-void UBLOX_fill_buffer_UBX(uint8_t *buffer, uint8_t len)
+uint8_t UBLOX_fill_buffer_UBX(uint8_t *buffer, uint8_t len)
 {
-	uint32_t timeout = 16000000;
+	uint32_t timeout = 500000;									// decreased for 2MHz PLL operation to 500000 (increase 10x for 64MHz PLL)
 	uint32_t pos = UART1_buffer_pointer;
 
 	while(UART1_buffer_pointer < (pos + len) && timeout) timeout--;
-	for(uint8_t i = 0; i < GPSBUFFER_SIZE; i++)
-	{
-		buffer[i] = 0;
-	}
+	
+	if(!timeout) return 0;
 	
 	uint8_t bytes = UART1_buffer_pointer;
 	for(uint8_t i = 0; i < bytes; i++)
 	{
 		buffer[i] = UART1_RX_buffer[i];
 	}
+	
+	return 1;
 }
 
 
@@ -411,23 +411,25 @@ void UBLOX_fill_buffer_UBX(uint8_t *buffer, uint8_t len)
 	Waits for the UART1_RX_buffer[] to contain an NMEA message terminated by the '\n' character
 	and then empties the buffer to a desired buffer for further processing.
 */
-void UBLOX_fill_buffer_NMEA(uint8_t *buffer)
+uint8_t UBLOX_fill_buffer_NMEA(uint8_t *buffer)
 {
-	uint32_t timeout = 16000000;
+	uint32_t timeout = 5000000;
 
 	while(UART1_RX_buffer[UART1_buffer_pointer - 1] != '\n' && timeout) timeout--;
-	for(uint8_t i = 0; i < GPSBUFFER_SIZE; i++)
-	{
-		buffer[i] = 0;
-	}
 	
-	if(!timeout) GPS_NMEA_error_bitfield |= (1 << 0);
+	if(!timeout)
+	{
+		GPS_NMEA_error_bitfield |= (1 << 0);
+		return 0;
+	}
 	
 	uint8_t bytes = UART1_buffer_pointer;
 	for(uint8_t i = 0; i < bytes; i++)
 	{
 		buffer[i] = UART1_RX_buffer[i];
 	}
+	
+	return 1;
 }
 
 
@@ -448,7 +450,7 @@ void UBLOX_send_message(uint8_t *message, uint8_t len)
 	Function polling desired GPS data. It first sends the set UBX request.
 	Then waits for the data and calls the appropriate parsing function.
 */
-void UBLOX_request_UBX(uint8_t *request, uint8_t len, uint8_t expectlen, void (*parse)(volatile uint8_t*))
+uint8_t UBLOX_request_UBX(uint8_t *request, uint8_t len, uint8_t expectlen, void (*parse)(volatile uint8_t*))
 {
 	for(uint8_t i = 0; i < len; i++)							// send the request
 	{
@@ -457,9 +459,13 @@ void UBLOX_request_UBX(uint8_t *request, uint8_t len, uint8_t expectlen, void (*
 	
 	UART1_buffer_pointer = 0;									// reset UART1 RX buffer pointer
 	
-	UBLOX_fill_buffer_UBX(GPSbuffer, expectlen);				// copy the response from UART1_RX_buffer to GPSbuffer
+	uint8_t ack = UBLOX_fill_buffer_UBX(GPSbuffer, expectlen);	// copy the response from UART1_RX_buffer to GPSbuffer
+	
+	if(!ack) return 0;
 	
 	parse(GPSbuffer);											// parse the response to appropriate variables
+	
+	return 1;
 }
 
 
