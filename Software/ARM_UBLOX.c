@@ -691,6 +691,7 @@ void UBLOX_parse_0107(volatile uint8_t *buffer)
 			// FIX
 			GPSfix = buffer[26];
 			GPSfix_0107 = buffer[27] & 0x01;
+			GPSvalidity = buffer[17];
 			
 			// POWER SAVE MODE STATE
 			GPSpowersavemodestate = (buffer[27] >> 2) & 0x07;

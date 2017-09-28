@@ -234,6 +234,7 @@ extern uint16_t GPSyear;										// for both UBX and NMEA
 extern uint8_t GPSsats;											// for both UBX and NMEA
 extern uint8_t GPSfix;											// for both UBX and NMEA
 extern uint8_t GPSfix_0107;										// only UBX source
+extern uint8_t GPSvalidity;										// only UBX source
 
 extern uint8_t GPSnavigation;									// only UBX source
 extern uint8_t GPSpowermode;									// only UBX source
